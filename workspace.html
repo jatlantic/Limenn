@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Limenn workspace</title>
+    <link rel="icon" href="/icons/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/shared/brand.css" />
+    <link rel="stylesheet" href="/src/workspace/style.css" />
+  </head>
+  <body>
+    <header class="ws-top">
+      <div class="brand"><span class="wordmark">limenn</span><span id="logo"></span><span class="eyebrow tag">workspace</span></div>
+      <div class="sites" role="tablist" aria-label="AI assistant">
+        <button data-site="chatgpt" role="tab">ChatGPT</button>
+        <button data-site="claude" role="tab" title="Needs you to be logged in to claude.ai in this browser">Claude<small>login required</small></button>
+        <button data-site="grok" role="tab" title="Needs you to be logged in to grok.com in this browser">Grok<small>login required</small></button>
+      </div>
+      <label class="switch" title="Protection on or off (also switches the Limenn bar and the side panel)"><input type="checkbox" id="enabled" checked /><span id="enabled-label">protect on</span></label>
+      <div class="ws-actions">
+        <button id="open-site" class="btn ghost sm" title="Go to the chat site itself, with the Limenn bar open">open ChatGPT with limenn ↗</button>
+        <button id="history-btn" class="btn sm" aria-expanded="false" aria-controls="history">history</button>
+        <button id="new-chat" class="btn sm">new chat</button>
+      </div>
+    </header>
+
+    <main class="ws-main">
+      <section id="thread" class="thread" aria-live="polite">
+        <div id="empty" class="ws-empty">
+          <h1>ask privately.</h1>
+          <p>Write here instead of in ChatGPT, Claude or Grok. Limenn removes names, numbers and other personal data on this computer, sends the clean request through your own ChatGPT, Claude or Grok account in a background tab, and shows the answer here with your real data filled back in.</p>
+          <p class="mono note">switch between ChatGPT, Claude and Grok at any time: the conversation so far comes along, with personal data replaced.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="ws-composer">
+      <div id="vault-pick" class="vault-pick" hidden></div>
+      <div id="chips" class="chips" hidden></div>
+      <div class="box">
+        <textarea id="prompt" rows="2" placeholder="Ask ChatGPT privately…"></textarea>
+        <div class="box-row">
+          <input id="files" type="file" multiple hidden />
+          <button id="attach" class="btn ghost sm" title="Attach files (PDF, Word, Excel, scans …)">attach</button>
+          <button id="vault" class="btn ghost sm" title="Prepared documents from your vault folder">vault</button>
+          <span class="off-badge mono" id="off-badge" hidden>protection off · sent unchanged</span>
+          <span class="hint mono" id="hint">⌘↵ to send</span>
+          <button id="send" class="btn primary">send ↗</button>
+        </div>
+      </div>
+      <p class="ws-fine mono">limenn catches most, not all, personal data · check “what the AI saw” for sensitive cases · not affiliated with OpenAI, Anthropic or xAI</p>
+    </footer>
+
+    <aside id="history" class="history" hidden aria-label="History of this session">
+      <div class="history-head">
+        <h2>history</h2>
+        <button id="history-close" class="btn ghost sm" aria-label="Close">close</button>
+      </div>
+      <p class="mono note">everything asked in this browser session, in the workspace and in the Limenn bar. it lives only in this browser's memory and is deleted when the browser closes.</p>
+      <ol id="history-list" class="history-list"></ol>
+      <button id="history-clear" class="btn ghost sm danger">clear history now</button>
+    </aside>
+
+    <div id="toast" class="toast" hidden></div>
+    <script type="module" src="/src/workspace/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Welcome to limenn</title>
+    <link rel="icon" href="/icons/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/shared/brand.css" />
+    <link rel="stylesheet" href="/src/welcome/style.css" />
+  </head>
+  <body>
+    <main class="wl">
+      <header class="wl-head">
+        <div class="brand"><span class="wordmark big">limenn</span><span id="logo"></span></div>
+        <p class="eyebrow">installed · everything runs on this computer</p>
+      </header>
+
+      <h1>use ChatGPT, Claude and Grok without giving away personal data.</h1>
+      <p class="lead">limenn replaces names, numbers and other personal details with placeholders like <code>[PERSON-1]</code> <em>before</em> anything leaves your computer, and puts the real values back into the answer.</p>
+
+      <ol class="steps">
+        <li class="step">
+          <span class="n">1</span>
+          <div>
+            <h2>pin limenn to your toolbar</h2>
+            <p>Click the puzzle piece <span class="kbd">🧩</span> at the top right of Chrome, then the pin <span class="kbd">📌</span> next to <b>limenn</b>. Clicking the limenn icon opens a side panel that shows exactly what was protected.</p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="n">2</span>
+          <div>
+            <h2>ask your first question privately</h2>
+            <p>The easiest and most private way: the <b>workspace</b>, limenn's own tab. Write there, choose ChatGPT, Claude or Grok, and read the answer with your real data filled back in.</p>
+            <div class="row">
+              <button id="open-workspace" class="btn primary">open the workspace ↗</button>
+              <span class="or">or write directly on the site, in the limenn bar at the top of the page:</span>
+              <button class="btn" data-site="chatgpt">ChatGPT</button>
+              <button class="btn" data-site="claude">Claude</button>
+              <button class="btn" data-site="grok">Grok</button>
+            </div>
+            <p class="try">try: <q>I am Maria Keller, AHV 756.1234.5678.97, and need a polite letter to my landlord at Seestrasse 4, 8002 Zürich.</q></p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="n">3</span>
+          <div>
+            <h2>optional: link a folder of documents</h2>
+            <p>Contracts, letters, scans: limenn prepares them ahead of time, including scanned pages, and saves a cleaned copy in <code>limenn-prepared/</code>. Attaching them later is instant. Open the side panel and click <b>link vault folder</b>.</p>
+          </div>
+        </li>
+      </ol>
+
+      <section class="facts">
+        <div><b>stays on your computer</b><span>your text, your files, the list of which placeholder stands for what</span></div>
+        <div><b>goes to the AI</b><span>only the cleaned text, through your own account</span></div>
+        <div><b>switch it off any time</b><span>the "protect" switch in the bar, the side panel or the workspace</span></div>
+      </section>
+      <p class="fine">limenn finds most personal data, but not all of it: check the cleaned text before sending anything highly sensitive (the side panel and "what ChatGPT saw" show it). limenn is a technical aid, not legal advice: you remain responsible for data protection, professional secrecy and the terms of the AI services you use. limenn is not affiliated with OpenAI, Anthropic or xAI. Free for noncommercial use; businesses need a license. <a href="https://github.com/jatlantic/Limenn/blob/main/DISCLAIMER.md" target="_blank" rel="noopener">full disclaimer</a> · <a href="https://github.com/jatlantic/Limenn/blob/main/PRIVACY.md" target="_blank" rel="noopener">privacy</a> · <a href="https://github.com/jatlantic/Limenn/blob/main/LICENSE" target="_blank" rel="noopener">license</a></p>
+    </main>
+    <script type="module" src="/src/welcome/main.ts"></script>
+  </body>
+</html>

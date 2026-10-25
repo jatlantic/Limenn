@@ -1,0 +1,24 @@
+body { background: var(--card); }
+.wl { width: min(860px, 100%); margin: 0 auto; padding: 56px 24px 80px; display: grid; gap: 22px; }
+.wl-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--accent); padding-bottom: 16px; }
+.brand { display: flex; align-items: center; gap: 6px; }
+.wordmark.big { font-size: 34px; letter-spacing: -1.2px; }
+h1 { font-size: clamp(34px, 5vw, 54px); line-height: 1.02; letter-spacing: -0.045em; margin-top: 12px; }
+.lead { margin: 0; font-size: 18px; line-height: 1.55; color: var(--ink-2); max-width: 720px; }
+.steps { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 0; }
+.step { display: grid; grid-template-columns: 56px 1fr; gap: 16px; padding: 22px 0; border-top: 1px solid var(--accent); }
+.step .n { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font: 400 18px var(--mono); }
+.step h2 { font-size: 24px; margin-bottom: 6px; }
+.step p { margin: 0 0 10px; font-size: 15px; line-height: 1.6; color: var(--ink-2); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 4px 0 10px; }
+.or { font: 400 12px var(--mono); color: var(--muted); flex-basis: 100%; margin-top: 4px; }
+.try { font-size: 13.5px !important; color: var(--muted) !important; }
+.try q { color: var(--accent-deep); }
+.kbd { display: inline-block; border: 1px solid var(--line-strong); padding: 0 5px; font-size: 13px; }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--accent); border: 1px solid var(--accent); margin-top: 10px; }
+.facts div { background: #fff; padding: 16px; display: grid; gap: 6px; }
+.facts b { font: 400 12px var(--mono); color: var(--accent); }
+.facts span { font-size: 14px; color: var(--ink-2); line-height: 1.45; }
+.fine { font-size: 12.5px; color: var(--muted); margin: 0; }
+code { font: 13px var(--mono); background: var(--accent-soft); color: var(--accent-deep); padding: 0 4px; }
+@media (max-width: 640px) { .facts { grid-template-columns: 1fr; } .step { grid-template-columns: 1fr; } }

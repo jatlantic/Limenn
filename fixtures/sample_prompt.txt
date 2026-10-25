@@ -1,0 +1,8 @@
+Hi Claude, I'm the HR lead at Brunner & Keller Treuhand AG. Please help me draft a careful, friendly email to our employee Lukas Brunner (lukas.brunner@gmx.ch, +41 79 123 45 67) about his return to work.
+
+Background: Lukas has been on sick leave since 03.02.2026 after a burnout diagnosis by Dr. med. Sabine Odermatt from Klinik Hirslanden in Zürich. His AHV number is 756.1234.5678.97 and his salary of CHF 7'850 per month is paid to IBAN CH93 0076 2011 6238 5295 7. He lives at Bahnhofstrasse 12, 9000 St. Gallen.
+
+I've attached his employment contract. Please:
+1. Summarise the clauses in the contract that are relevant for long-term sick leave (notice period, continued salary payment, daily sickness allowance insurance).
+2. Draft the email to Lukas proposing a gradual return (50% from 1 March), and cc his line manager Petra Vogel.
+3. Tell me which deadlines I need to keep in mind under the contract.

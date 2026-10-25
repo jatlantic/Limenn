@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Limenn</title>
+    <link rel="stylesheet" href="/src/shared/brand.css" />
+    <link rel="stylesheet" href="/src/sidepanel/style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <span class="wordmark">limenn</span>
+        <span id="logo"></span>
+        <span class="eyebrow tag">privacy shield</span>
+      </div>
+      <button id="open-workspace" class="btn sm" title="Open the Limenn workspace: write and read in Limenn's own tab">workspace ↗</button>
+      <label class="switch" title="Switch Limenn's protection on or off in every tab"><input type="checkbox" id="enabled" checked /><span id="enabled-label">on</span></label>
+            <button id="open-options" class="btn ghost sm icon" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+      </button>
+    </header>
+
+    <div class="model" id="model"><span class="dot"></span><span id="model-text">Loading local model…</span><div class="bar"><div id="model-bar"></div></div></div>
+
+    <main>
+      <section id="empty" class="card empty">
+        <div class="empty-art" id="empty-art"></div>
+        <h2>Ask privately</h2>
+        <p>Type in the <b>Limenn bar</b> at the top of chatgpt.com, claude.ai or grok.com, or open the <b>workspace</b>. Every step of the cleaning shows up here live — what was found, by which stage, and exactly what the model receives.</p>
+        <div class="row"><button data-open-site="claude" class="btn primary">Open Claude</button><button data-open-site="chatgpt" class="btn">Open ChatGPT</button><button data-open-site="grok" class="btn">Open Grok</button></div>
+      </section>
+
+      <section id="job" hidden>
+        <div class="job-head">
+          <div class="eyebrow" id="job-meta">Latest request</div>
+          <h1 id="job-title"></h1>
+          <div class="job-badges"><span id="job-status" class="status"></span><span id="job-count" class="count"></span></div>
+        </div>
+
+        <div id="tabs" class="tabs" role="tablist"></div>
+
+        <ol id="steps" class="steps"></ol>
+
+        <div id="answer-box" class="card block answer" hidden>
+          <div class="block-head">
+            <span class="eyebrow"><span class="site-name">The model</span>'s answer</span>
+            <span id="answer-state" class="live"></span>
+          </div>
+          <div class="seg" role="tablist">
+            <button id="ans-restored" aria-selected="true">With your real data</button>
+            <button id="ans-raw" aria-selected="false">As <span class="site-name">the model</span> wrote it</button>
+          </div>
+          <p id="answer-note" class="note"></p>
+          <div id="answer" class="answer-text"></div>
+          <button id="copy-answer-inline" class="btn sm">Copy answer with real values</button>
+        </div>
+
+        <div class="card block">
+          <div class="block-head">
+            <span class="eyebrow">Detected in your text</span>
+            <span class="legend"><i class="regex"></i>format <i class="ner"></i>context <i class="manual"></i>you</span>
+          </div>
+          <div id="types" class="types"></div>
+          <div id="original" class="doc original"></div>
+          <div class="hint">Click a highlight to send it unchanged · select text to protect it</div>
+          <div id="selection-bar" class="selection-bar" hidden>
+            <span>Protect “<b id="sel-text"></b>” as</span>
+            <select id="sel-type">
+              <option>PERSON</option><option>ORG</option><option>LOCATION</option><option>ADDRESS</option>
+              <option>ID_NUMBER</option><option>HEALTH</option><option>FINANCIAL</option><option>DATE</option>
+            </select>
+            <button id="sel-add" class="btn primary sm">Protect</button>
+          </div>
+        </div>
+
+        <div class="card block">
+          <div class="block-head">
+            <span class="eyebrow">What <span class="site-name">the model</span> receives</span>
+            <button id="copy" class="btn ghost sm">Copy</button>
+          </div>
+          <pre id="clean-out" class="doc clean"></pre>
+        </div>
+
+        <ul id="warnings" class="warnings"></ul>
+
+        <div id="kept-box" class="kept" hidden>
+          <span class="eyebrow">Always sent unchanged</span>
+          <div id="kept"></div>
+        </div>
+      </section>
+
+      <section class="card block" id="docvault">
+        <div class="block-head">
+          <span class="eyebrow">Document vault</span>
+          <span id="dv-summary" class="vault-count"></span>
+        </div>
+        <p id="dv-intro" class="note">Link a folder once. Limenn prepares every document in it ahead of time (reading, scans, finding personal data) and saves a cleaned copy in <code>limenn-prepared/</code> inside the folder. Only prepared documents can be attached in the Limenn bar, and attaching them is instant.</p>
+        <p id="dv-prepared-note" class="note" hidden>Cleaned copies: <code>limenn-prepared/</code> in this folder.</p>
+        <div id="dv-warn" class="warnings" hidden></div>
+        <div id="dv-progress" class="dv-progress" hidden>
+          <div class="dv-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i id="dv-bar"></i></div>
+          <div class="dv-progress-text"><span id="dv-progress-label"></span><span id="dv-progress-pct"></span></div>
+        </div>
+        <ul id="dv-list" class="dv-list"></ul>
+        <div id="dv-review" class="dv-review" hidden>
+          <div class="block-head"><b id="dv-review-name"></b><button id="dv-review-close" class="btn ghost sm">Close</button></div>
+          <div id="dv-review-doc" class="doc original"></div>
+          <div class="hint">Click a highlight to send it unchanged whenever this document is used · select text to protect it</div>
+          <div id="dv-sel" class="selection-bar" hidden>
+            <span>Protect “<b id="dv-sel-text"></b>” as</span>
+            <select id="dv-sel-type">
+              <option>PERSON</option><option>ORG</option><option>LOCATION</option><option>ADDRESS</option>
+              <option>ID_NUMBER</option><option>HEALTH</option><option>FINANCIAL</option><option>DATE</option>
+            </select>
+            <button id="dv-sel-add" class="btn primary sm">Protect</button>
+          </div>
+        </div>
+        <div class="row">
+          <button id="dv-link" class="btn sm primary">Link vault folder</button>
+          <button id="dv-scan" class="btn sm" hidden>Rescan</button>
+          <button id="dv-unlink" class="btn ghost sm danger" hidden>Unlink</button>
+        </div>
+      </section>
+
+      <section class="card block">
+        <details id="mapping-box">
+          <summary><span class="eyebrow">Placeholder vault</span><span class="vault-count"><span id="map-count">0</span> values · stays in this browser</span></summary>
+          <table id="mapping"></table>
+          <div class="row">
+            <button id="copy-answer" class="btn sm">Copy last answer (restored)</button>
+            <button id="clear-map" class="btn ghost sm danger">Clear vault</button>
+          </div>
+        </details>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" hidden></div>
+    <script type="module" src="/src/sidepanel/main.ts"></script>
+  </body>
+</html>

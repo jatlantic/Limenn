@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Limenn settings</title>
+    <link rel="stylesheet" href="/src/shared/brand.css" />
+    <style>
+      body { max-width: 680px; margin: 0 auto; padding: 40px 20px 60px; }
+      header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+      .lead { font: 400 34px/1.15 var(--display); letter-spacing: -1px; margin: 18px 0 6px; }
+      .sub { color: var(--muted); margin: 0 0 24px; font-size: 15px; }
+      form { display: grid; gap: 14px; }
+      section.card { padding: 18px; display: grid; gap: 14px; }
+      .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+      h2 { font-size: 18px; letter-spacing: -0.3px; }
+      .field { display: grid; gap: 6px; }
+      .field label { font-weight: 500; font-size: 13px; }
+      .help { color: var(--muted); font-size: 12.5px; margin: 0; }
+      .check { display: flex; gap: 10px; align-items: center; font-weight: 500; }
+      .check input { width: 16px; height: 16px; accent-color: var(--accent); }
+      .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .actions { display: flex; gap: 8px; align-items: center; }
+      #msg { color: var(--muted); font-size: 13px; }
+      #msg.ok { color: var(--accent-deep); } #msg.err { color: var(--red); }
+      @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <header><span class="wordmark">limenn</span><span id="logo"></span><span class="eyebrow" style="margin-left:8px">privacy shield</span></header>
+    <h1 class="lead">Settings</h1>
+    <p class="sub">Everything runs on this computer. Limenn makes no network requests: the detection models ship with the extension, and your text and files never leave this browser.</p>
+    <form id="form">
+      <section class="card">
+        <div class="sec-head"><h2>Names in context</h2><span class="eyebrow">on device</span></div>
+        <label class="check"><input type="checkbox" name="enableNer" /> Find names, organisations and places from context</label>
+        <p class="help">Runs on this computer in German, French, Italian and English. Bundled with the extension.</p>
+        <div class="field"><label>Accept threshold</label><input type="number" name="nerThreshold" min="0" max="1" step="0.01" />
+          <p class="help">Detections below this score are not redacted automatically; select them in the side panel to protect them.</p></div>
+      </section>
+
+      <section class="card">
+        <div class="sec-head"><h2>General</h2></div>
+        <div class="field"><label>Never redact (one per line)</label><textarea name="allowList" rows="4"></textarea></div>
+        <div class="field"><label>Next-generation detector</label>
+          <select name="nextGen">
+            <option value="vault">For vault documents (prepared in advance, no waiting)</option>
+            <option value="all">Everywhere, including prompts (a bit slower)</option>
+            <option value="off">Off</option>
+          </select>
+          <p class="help">A second compact model that runs on this computer's processor. It catches considerably more names, addresses, IDs and health details. Nothing is sent anywhere.</p>
+        </div>
+        <div class="field"><label>Money amounts</label>
+          <select name="financialPolicy">
+            <option value="context">Redact personal amounts only (salary, rent, deposit, debt…) — keeps invoice totals readable</option>
+            <option value="all">Redact every amount</option>
+          </select>
+        </div>
+        <label class="check"><input type="checkbox" name="persistMapping" /> Remember the placeholder vault after the browser restarts</label>
+        <p class="help" style="margin-top:-8px">Off: the vault lives only for this browser session; older answers then keep their placeholders.</p>
+      </section>
+
+      <div class="actions"><button class="btn primary" type="submit">Save settings</button><span id="msg"></span></div>
+    </form>
+    <p class="help" style="margin-top:28px">limenn reduces, but cannot guarantee to remove, all personal data. It is not legal advice and not affiliated with OpenAI, Anthropic or xAI. Free for noncommercial use. <a href="https://github.com/jatlantic/Limenn/blob/main/DISCLAIMER.md" target="_blank" rel="noopener">Disclaimer</a> · <a href="https://github.com/jatlantic/Limenn/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a> · <a href="https://github.com/jatlantic/Limenn/blob/main/THIRD_PARTY_NOTICES.md" target="_blank" rel="noopener">Licenses</a></p>
+    <script type="module" src="/src/options/main.ts"></script>
+  </body>
+</html>

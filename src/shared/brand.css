@@ -1,0 +1,65 @@
+/* Atlas design (limenn.io): white canvas, electric blue #1a3cff for ink and accents, Inter Tight text,
+   JetBrains Mono labels, square buttons, pill chips, hairline blue rules. Fonts are bundled (no network). */
+@font-face { font-family: 'Inter Tight'; src: url('/fonts/InterTight-latin.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Inter Tight'; src: url('/fonts/InterTight-latin-ext.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'JetBrains Mono'; src: url('/fonts/JetBrainsMono-latin.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'JetBrains Mono'; src: url('/fonts/JetBrainsMono-latin-ext.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+:root {
+  --bg: #f6f8ff;
+  --card: #ffffff;
+  --ink: #071152;
+  --ink-2: #0b1a7a;
+  --muted: #5b6bb5;
+  --faint: #8fa4ff;
+  --line: rgba(26, 60, 255, 0.18);
+  --line-strong: rgba(26, 60, 255, 0.4);
+  --accent: #1a3cff;
+  --accent-deep: #0b1a7a;
+  --accent-soft: #eef2ff;
+  --grad: none;
+  --amber: #b45309;
+  --amber-bg: #fff7ed;
+  --red: #e5203a;
+  --red-bg: #fff1f3;
+  --regex: #1a3cff;
+  --ner: #7b5cff;
+  --jev: #0b1a7a;
+  --manual: #ea580c;
+  --radius: 0px;
+  --radius-lg: 0px;
+  --sans: 'Inter Tight', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --display: 'Inter Tight', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  font: 14px/1.5 var(--sans);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--card); color: var(--ink); }
+::selection { background: var(--accent); color: #fff; }
+button { font: inherit; cursor: pointer; }
+
+.wordmark { font: 400 21px/1 var(--display); letter-spacing: -0.8px; color: var(--accent); display: inline-flex; align-items: center; gap: 3px; }
+.wordmark-mark { font: 400 15px/1 var(--mono); display: inline-flex; align-items: center; }
+.wordmark-mark i { display: inline-block; width: 8px; height: 3px; background: currentColor; margin: 0 1px; animation: blink 2.4s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0.25; } }
+.eyebrow { font: 400 11px/1 var(--mono); letter-spacing: -0.2px; text-transform: lowercase; color: var(--accent); }
+h1, h2, h3 { font-family: var(--display); font-weight: 400; margin: 0; letter-spacing: -0.03em; color: var(--accent); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 0; border: 1px solid var(--accent); background: var(--card); color: var(--accent); font: 400 12.5px var(--mono); letter-spacing: -0.2px; text-transform: lowercase; transition: background 0.15s, color 0.15s; }
+.btn:hover { background: var(--accent-soft); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+.btn.outline { border-color: var(--accent); color: var(--accent); background: var(--card); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+.btn.ghost:hover { color: var(--accent); background: var(--accent-soft); }
+.btn.sm { height: 28px; padding: 0 10px; font-size: 11.5px; }
+
+.card { background: var(--card); border: 0; border-top: 1px solid var(--accent); border-radius: 0; }
+input[type='text'], input[type='password'], input[type='number'], textarea, select {
+  font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line-strong); border-radius: 0; padding: 8px 10px; width: 100%;
+}
+input:focus, textarea:focus, select:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+a { color: var(--accent); }

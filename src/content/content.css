@@ -1,0 +1,11 @@
+/* Values restored by Limenn (placeholders swapped back to real data) */
+::highlight(limenn-restored) {
+  background-color: rgba(26, 60, 255, 0.1);
+  text-decoration: underline dotted rgba(26, 60, 255, 0.9);
+}
+
+/* Placeholders in your own message — this is exactly what Claude received */
+::highlight(limenn-protected) {
+  background-color: rgba(26, 60, 255, 0.1);
+  color: #1a3cff;
+}

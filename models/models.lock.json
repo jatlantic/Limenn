@@ -1,0 +1,63 @@
+{
+  "comment": "Every model file the extension ships with. fetch-models downloads missing files into .cache/models/<path>; build copies them to dist/models/<path>. Both check sha256. Revisions are pinned Hugging Face commits.",
+  "files": [
+    {
+      "path": "Xenova/distilbert-base-multilingual-cased-ner-hrl/config.json",
+      "url": "https://huggingface.co/Xenova/distilbert-base-multilingual-cased-ner-hrl/resolve/c2a4dbf593c57f47004c5bc2d3770d311aee9c43/config.json",
+      "sha256": "38847be4dc6699b1218a749ed69f888c2ccc7b4deba98e3c4a1cac8cb34d54c8"
+    },
+    {
+      "path": "Xenova/distilbert-base-multilingual-cased-ner-hrl/tokenizer_config.json",
+      "url": "https://huggingface.co/Xenova/distilbert-base-multilingual-cased-ner-hrl/resolve/c2a4dbf593c57f47004c5bc2d3770d311aee9c43/tokenizer_config.json",
+      "sha256": "2d61ce6c7646881e0e7ef08e3b5dd655a19553ab85c41b1a3c27090a63ff6f49"
+    },
+    {
+      "path": "Xenova/distilbert-base-multilingual-cased-ner-hrl/tokenizer.json",
+      "url": "https://huggingface.co/Xenova/distilbert-base-multilingual-cased-ner-hrl/resolve/c2a4dbf593c57f47004c5bc2d3770d311aee9c43/tokenizer.json",
+      "sha256": "bf1b59b7b11c95f194f51708d918eea378e09d05f84c0e1656dc5180e8117088"
+    },
+    {
+      "path": "Xenova/distilbert-base-multilingual-cased-ner-hrl/onnx/model_quantized.onnx",
+      "url": "https://huggingface.co/Xenova/distilbert-base-multilingual-cased-ner-hrl/resolve/c2a4dbf593c57f47004c5bc2d3770d311aee9c43/onnx/model_quantized.onnx",
+      "sha256": "24a0b98f4dd4cd92842f5a541272f86f760225a64a29928eddef14bdb2edb986"
+    },
+    {
+      "path": "onnx-community/gliner_multi_pii-v1/tokenizer_config.json",
+      "url": "https://huggingface.co/onnx-community/gliner_multi_pii-v1/resolve/2e0397a7e8a250d76c37122232b3cbde42c8d629/tokenizer_config.json",
+      "sha256": "78f866883daf7ee2bc400200a155cdbe9116ed0a6ed597ff573ea2c9862a89a6"
+    },
+    {
+      "path": "onnx-community/gliner_multi_pii-v1/tokenizer.json",
+      "url": "https://huggingface.co/onnx-community/gliner_multi_pii-v1/resolve/2e0397a7e8a250d76c37122232b3cbde42c8d629/tokenizer.json",
+      "sha256": "914bd3c8fb7b525af9e23b60d0ec7b1248ddb2b99014efd9c02ebeb022f8cab7"
+    },
+    {
+      "path": "gliner_multi_pii-v1/onnx/model_web_q8.onnx",
+      "dest": "gliner-web-q8.onnx",
+      "url": null,
+      "build": "WASM-safe 8-bit export of urchade/gliner_multi_pii-v1 (Apache-2.0), shipped in the release package. Set LIMENN_WEB_MODEL_URL (or fill in url) to download it when building from source; without it the build skips the second detector.",
+      "sha256": "fcd0d0a5a27aeaef14748505bb1c30bece65e4d3a47d17c7e87a105e0b29f783",
+      "optional": true
+    },
+    {
+      "path": "tessdata_best/eng.traineddata",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/eng.traineddata",
+      "sha256": "8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba"
+    },
+    {
+      "path": "tessdata_best/deu.traineddata",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/deu.traineddata",
+      "sha256": "8407331d6aa0229dc927685c01a7938fc5a641d1a9524f74838cdac599f0d06e"
+    },
+    {
+      "path": "tessdata_best/fra.traineddata",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/fra.traineddata",
+      "sha256": "907743d98915c91a3906dfbf6e48b97598346698fe53aaa797e1a064ffcac913"
+    },
+    {
+      "path": "tessdata_best/ita.traineddata",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/ita.traineddata",
+      "sha256": "8df9c89176fb93f56bf4b2d4ede04c01c1f31d4b7697fbd76cc336df700f3f38"
+    }
+  ]
+}

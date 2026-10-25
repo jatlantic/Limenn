@@ -1,0 +1,187 @@
+/* Limenn bar — lives in a shadow root on claude.ai / chatgpt.com. Atlas design tokens (see src/shared/brand.css). */
+:host {
+  all: initial;
+  --bg: #f6f8ff;
+  --card: #ffffff;
+  --ink: #071152;
+  --muted: #5b6bb5;
+  --line: rgba(26, 60, 255, 0.18);
+  --line-strong: rgba(26, 60, 255, 0.4);
+  --accent: #1a3cff;
+  --accent-deep: #0b1a7a;
+  --accent-soft: #eef2ff;
+  --amber: #b45309;
+  --amber-bg: #fff7ed;
+  --red: #e5203a;
+  /* System fonts only: the bar loads nothing from the extension, so pages cannot detect or fingerprint it. */
+  --sans: system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --display: system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483646;
+  width: min(760px, calc(100vw - 32px));
+  font: 14px/1.45 var(--sans);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+:host(.min) { left: auto; right: 16px; transform: none; width: auto; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; cursor: pointer; }
+
+.shell {
+  background: var(--card);
+  border: 1px solid var(--accent);
+  border-radius: 0;
+  box-shadow: 0 16px 40px -18px rgba(26, 60, 255, 0.35);
+  overflow: hidden;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.shell:focus-within { box-shadow: 0 0 0 3px var(--accent-soft), 0 16px 40px -18px rgba(26, 60, 255, 0.35); }
+.shell.drag { border-color: var(--accent); border-style: dashed; }
+
+.bar { display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 12px; }
+.brand { display: flex; align-items: center; gap: 6px; height: 34px; flex: none; }
+.word {
+  font: 400 19px/1 var(--display);
+  letter-spacing: -0.7px;
+  color: var(--accent);
+}
+.shell { cursor: grab; }
+.shell textarea, .shell .chips, .shell .vault-pop, .shell .summary { cursor: auto; }
+.shell button, .shell label { cursor: pointer; }
+.grip { font: 14px/1 var(--mono); color: var(--line-strong); margin-right: 2px; transition: color 0.15s; }
+.shell:hover .grip { color: var(--accent); }
+.handle { cursor: grab; user-select: none; touch-action: none; border-radius: 0; padding: 0 4px; margin-left: -4px; }
+.handle:hover { background: var(--accent-soft); }
+:host(.dragging) .shell, :host(.dragging) .shell *, :host(.dragging) .pill { cursor: grabbing; }
+:host(.dragging) .shell { box-shadow: 0 24px 48px -16px rgba(26, 60, 255, 0.45); }
+.pill { cursor: grab; touch-action: none; }
+.divider { width: 1px; height: 20px; background: var(--line); margin: 0 2px 7px; flex: none; }
+
+textarea {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: transparent;
+  font: 15px/22px var(--sans);
+  color: var(--ink);
+  padding: 6px 2px;
+  max-height: min(340px, 50vh);
+}
+textarea::placeholder { color: #8fa4ff; }
+
+.icon {
+  width: 34px; height: 34px; flex: none;
+  display: grid; place-items: center;
+  border: 0; border-radius: 0; background: transparent; color: var(--accent);
+}
+.icon:hover { background: var(--accent-soft); color: var(--accent-deep); }
+.icon svg { width: 18px; height: 18px; }
+
+.send {
+  height: 34px; flex: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 14px; border: 0; border-radius: 0;
+  background: var(--accent); color: #fff; font: 400 13px var(--mono); letter-spacing: -0.2px;
+  transition: background 0.15s;
+}
+.send:hover { background: var(--accent-deep); }
+.send:disabled { opacity: 0.5; cursor: progress; }
+.send svg { width: 15px; height: 15px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 8px 44px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: 12px/1 var(--sans); color: var(--ink);
+  background: var(--card); border: 1px solid var(--accent); border-radius: 999px; padding: 5px 8px 5px 10px;
+}
+.chip .x { border: 0; background: none; color: var(--muted); padding: 0 2px; font-size: 14px; line-height: 1; }
+.chip svg { width: 13px; height: 13px; color: var(--muted); }
+
+.foot {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 12px; border-top: 1px solid var(--line); background: var(--bg);
+  font: 11px/1.3 var(--mono); letter-spacing: -0.2px; color: var(--muted);
+}
+.foot .spacer { flex: 1; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.toggle input { appearance: none; width: 26px; height: 15px; border-radius: 99px; background: var(--line-strong); position: relative; margin: 0; cursor: pointer; transition: background 0.15s; }
+.toggle input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%; background: #fff; transition: transform 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.toggle input:checked { background: var(--accent); }
+.toggle input:checked::after { transform: translateX(11px); }
+.link { border: 0; background: none; color: var(--accent); font: 400 11px var(--mono); padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+.link:hover { color: var(--accent-deep); text-decoration: underline; }
+.shield { display: inline-flex; align-items: center; gap: 5px; }
+.shield svg { width: 12px; height: 12px; color: var(--accent); }
+
+/* live pipeline */
+.steps { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.step {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: 400 11px/1 var(--mono); letter-spacing: -0.2px; text-transform: lowercase;
+  color: var(--muted); padding: 4px 7px; border-radius: 999px; border: 1px solid transparent;
+}
+.step .n { font-weight: 600; color: var(--ink); }
+.step .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong); }
+.step.running { color: var(--ink); border-color: var(--line); background: var(--card); }
+.step.running .dot { background: var(--accent); animation: pulse 0.8s ease-in-out infinite alternate; }
+.step.done .dot { background: var(--accent); }
+.step.skipped { opacity: 0.55; }
+.step.error .dot { background: var(--red); }
+.arrow { color: var(--line-strong); font-size: 11px; }
+@keyframes pulse { from { opacity: 1; transform: scale(1); } to { opacity: 0.35; transform: scale(0.7); } }
+
+.summary { display: flex; align-items: center; gap: 8px; font: 12px var(--sans); color: var(--ink); }
+.summary b { font-weight: 600; }
+.restored-note { background: var(--accent-soft); border-bottom: 1px dotted var(--accent); padding: 0 2px; border-radius: 2px; }
+.badge { font: 400 11px/1 var(--mono); color: #fff; background: var(--accent); padding: 4px 8px; border-radius: 999px; }
+.err { color: var(--red); }
+.primary-sm { height: 26px; padding: 0 10px; border: 0; border-radius: 0; background: var(--accent); color: #fff; font: 400 11.5px var(--mono); }
+.primary-sm:hover { background: var(--accent-deep); }
+
+/* minimized pill */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 10px;
+  background: var(--card); border: 1px solid var(--accent); border-radius: 99px;
+  box-shadow: 0 8px 24px -10px rgba(26, 60, 255, 0.35);
+}
+.pill:hover { border-color: var(--accent); }
+
+/* Document Vault picker */
+.icon.vault-btn { position: relative; }
+.icon.vault-btn[aria-expanded='true'] { background: var(--accent-soft); color: var(--accent-deep); }
+.icon.vault-btn .n { position: absolute; top: 3px; right: 2px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 99px; background: var(--accent); color: #fff; font: 600 9.5px/14px var(--mono); }
+.chip.vault { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); background: var(--accent-soft); }
+.chip.vault svg { color: var(--accent-deep); }
+.vault-pop { border-top: 1px solid var(--line); padding: 8px 12px 10px; display: grid; gap: 6px; }
+.vault-q { width: 100%; height: 30px; border: 1px solid var(--line-strong); border-radius: 0; padding: 0 9px; font: 13px var(--sans); color: var(--ink); background: var(--card); outline: 0; }
+.vault-q:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.vault-list { display: grid; gap: 2px; max-height: 220px; overflow: auto; }
+.vault-item { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; text-align: left; border: 0; background: none; padding: 6px 6px; border-radius: 0; font: 13px var(--sans); color: var(--ink); }
+.vault-item:hover:not(:disabled) { background: var(--accent-soft); }
+.vault-item:disabled { cursor: not-allowed; opacity: 0.55; }
+.vault-item .box { width: 14px; height: 14px; border: 1px solid var(--accent); border-radius: 0; display: grid; place-items: center; color: #fff; font-size: 10px; }
+.vault-item.on .box { background: var(--accent); border-color: var(--accent); }
+.vault-item .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vault-item .nm small { color: var(--muted); margin-left: 6px; font-size: 11.5px; }
+.vault-item .st { font: 400 10.5px/1 var(--mono); text-transform: lowercase; padding: 3px 7px; border-radius: 999px; color: var(--accent-deep); background: var(--accent-soft); }
+.vault-item .st.error { color: var(--red); background: #fef2f2; }
+.vault-foot { display: flex; align-items: center; gap: 8px; font: 11.5px/1.3 var(--sans); color: var(--muted); }
+.vault-foot .spacer { flex: 1; }
+.vault-empty { font: 12.5px/1.4 var(--sans); color: var(--muted); padding: 6px 2px; }
+
+/* protection switched off: the bar steps aside, the site works as normal */
+.off-note { display: none; flex: 1; align-self: center; font: 400 13px/1.4 var(--sans); color: var(--muted); padding: 6px 2px; }
+.pill-off { display: none; font: 400 10.5px/1 var(--mono); color: #fff; background: var(--red); padding: 3px 7px; border-radius: 999px; }
+:host(.off) .off-note, :host(.off) .pill-off { display: inline-block; }
+:host(.off) textarea, :host(.off) .attach, :host(.off) .vault-btn, :host(.off) .send, :host(.off) .chips,
+:host(.off) .vault-pop, :host(.off) .steps, :host(.off) .summary, :host(.off) .toggle:not(.protect), :host(.off) .details { display: none !important; }
+:host(.off) .shell { border-color: var(--line-strong); box-shadow: none; }
+.toggle.protect input:not(:checked) { background: var(--red); }
+.idle-info:empty { display: none; }

@@ -1,0 +1,22 @@
+# dependencies and build output
+node_modules/
+dist/
+release/
+*.zip
+
+# downloaded models (fetched and hash-checked by npm run build)
+.cache/
+*.onnx
+*.traineddata
+
+# limenn working files that may contain personal data: never commit them
+.limenn/
+limenn-prepared/
+
+# local environment
+.env
+.env.*
+*.log
+.DS_Store
+.vscode/
+.idea/

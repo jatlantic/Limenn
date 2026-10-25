@@ -1,0 +1,18 @@
+{
+  "sample_prompt.txt": {
+    "mustRedact": [
+      "Lukas Brunner", "lukas.brunner@gmx.ch", "+41 79 123 45 67", "03.02.2026", "Sabine Odermatt",
+      "756.1234.5678.97", "CH93 0076 2011 6238 5295 7", "Bahnhofstrasse 12", "9000 St. Gallen", "Petra Vogel",
+      "Brunner & Keller Treuhand AG", "Klinik Hirslanden"
+    ],
+    "mustKeep": ["sick leave", "employment contract", "notice period", "gradual return"]
+  },
+  "sample_contract.pdf": {
+    "mustRedact": [
+      "Lukas Brunner", "14.07.1988", "Bahnhofstrasse 12", "756.1234.5678.97", "BK-20931", "Rosenbergstrasse 30",
+      "petra.vogel@bk-treuhand.ch", "071 222 33 44", "CH93 0076 2011 6238 5295 7", "KT-448812-07", "Petra Vogel",
+      "Sabine Odermatt", "Witellikerstrasse 40", "8008 Zürich", "s.odermatt@hirslanden-example.ch", "4402819", "03.02.2026"
+    ],
+    "mustKeep": ["Kündigungsfrist", "Krankentaggeldversicherung", "730 Tagen", "Art. 336c OR"]
+  }
+}
