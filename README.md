@@ -34,7 +34,7 @@ git clone https://github.com/jatlantic/Limenn.git && cd Limenn
 npm install
 npm run build        # downloads the pinned, hash-checked models once, then builds into dist/
 ```
-Then load the `dist/` folder as above. Run `npm test` for the test suite. The optional second detector (`gliner-web-q8.onnx`) is part of the release package. To include it in your own build, set `LIMENN_WEB_MODEL_URL`; without it, limenn uses its rules and the name model.
+Then load the `dist/` folder as above. Run `npm test` for the test suite. The optional second detector (`gliner-web-q8.onnx`) is part of the release package. To include it in your own build, set `LIMENN_WEB_MODEL_URL` to a URL or a local path of the file (`LIMENN_WEB_MODEL_URL=/path/to/gliner-web-q8.onnx npm run build`); without it the build prints a warning and limenn uses its rules and the name model. All other models are downloaded automatically on the first build.
 </details>
 
 ## Use it

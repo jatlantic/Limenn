@@ -16,6 +16,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Require the second-detector model URL
+        run: test -n "$LIMENN_WEB_MODEL_URL" || { echo "::error::Repository variable LIMENN_WEB_MODEL_URL is not set: the release would ship without gliner-web-q8.onnx"; exit 1; }
+        env:
+          LIMENN_WEB_MODEL_URL: ${{ vars.LIMENN_WEB_MODEL_URL }}
       - run: npm ci
       - run: npm test
       - run: npm run release

@@ -123,6 +123,8 @@ async function pressSend() {
 
 const PENDING_KEY = 'limenn.pendingAnswer';
 const WATCH_MS = 10 * 60_000;
+/** An answer is complete when the site stopped streaming and the text has been unchanged this long. */
+const SETTLE_MS = 1500;
 
 /**
  * After sending: follow the assistant's reply and report it (restored) to the side panel while it streams.
@@ -135,32 +137,55 @@ function watchAnswer(jobId: string, resume?: { before: number; t0: number }) {
   try {
     sessionStorage.setItem(PENDING_KEY, JSON.stringify({ jobId, before, t0: started }));
   } catch {}
+  let last = '';
+  let lastRaw = '';
+  let lastChange = Date.now();
+  let lastDone = false;
+  let timer: number | undefined;
+  let finished = false;
   const finish = () => {
+    finished = true;
     obs.disconnect();
+    clearInterval(poll);
+    clearTimeout(timer);
     try {
       sessionStorage.removeItem(PENDING_KEY);
     } catch {}
   };
-  let last = '';
-  let timer: number | undefined;
-  const report = () => {
+  const report = async () => {
+    // The vault may still be loading right after a page reload; without it the placeholders could not be mapped back.
+    await vaultReady;
+    if (finished) return;
+    if (Date.now() - started > WATCH_MS) {
+      // Give up, but don't leave the workspace on "writing…" forever.
+      if (last && !lastDone) chrome.runtime.sendMessage({ type: 'limenn:answer', jobId, text: last, raw: lastRaw, done: true }).catch(() => {});
+      return finish();
+    }
     const msgs = qAll(SELECTORS.assistantMessage);
     if (msgs.length <= before) return;
     const el = msgs[msgs.length - 1] as HTMLElement;
     const rawText = unrestoreString(answerText(el));
     const text = restoreString(rawText);
-    const done = !site.isStreaming(el);
-    if (!text || (text === last && !done)) return;
+    if (!text) return;
+    if (text !== last) lastChange = Date.now();
+    // A site's "still writing" signal can be missed (Grok has no stable one), which used to end the watch after the
+    // first chunk. So an answer only counts as complete once it has also stopped changing for a moment.
+    const done = !site.isStreaming(el) && Date.now() - lastChange >= SETTLE_MS;
+    if (text === last && done === lastDone) return;
     last = text;
+    lastRaw = rawText;
+    lastDone = done;
     chrome.runtime.sendMessage({ type: 'limenn:answer', jobId, text, raw: rawText, done }).catch(() => {});
     if (done) finish();
   };
   const obs = new MutationObserver(() => {
-    if (Date.now() - started > WATCH_MS) return finish();
     clearTimeout(timer);
     timer = window.setTimeout(report, 300);
   });
   obs.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['data-is-streaming'] });
+  // Safety net: background tabs throttle timers and some sites update text without a mutation we see, and the
+  // "settled" check needs a tick even when nothing changes any more.
+  const poll = window.setInterval(report, 1500);
   // The answer may already be complete (fast reply, or after a reload), so no further mutation would trigger a report.
   timer = window.setTimeout(report, 800);
 }
@@ -328,6 +353,7 @@ const observer = new MutationObserver((mutations) => {
   }
 });
 
+let vaultReady: Promise<void> = Promise.resolve();
 async function loadVault() {
   const s = await chrome.storage.session.get(VAULT_KEY).catch(() => ({}) as Record<string, unknown>);
   const l = await chrome.storage.local.get(VAULT_KEY);
@@ -338,7 +364,7 @@ async function loadVault() {
 chrome.storage.onChanged.addListener((changes) => {
   if (changes[VAULT_KEY]) loadVault();
 });
-loadVault();
+vaultReady = loadVault();
 observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
 // ---------- Limenn bar + messaging ----------

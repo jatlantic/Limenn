@@ -188,7 +188,14 @@ async function workspaceSend(msg: { input: JobInput; site: SiteAdapter['id']; ne
   if (cleaned.status === 'error') return cleaned;
   // Leak guard: never send automatically when something risky is still in the cleaned text.
   if (!cleaned.unprotected && cleaned.items.some((i) => i.risks?.some((r) => r.severity === 'high'))) return { ...cleaned, status: 'cleaned' };
-  const r = await chrome.tabs.sendMessage(tabId, { type: 'limenn:deliver', job: cleaned }).catch((e: Error) => ({ ok: false, error: e.message }));
+  const urlBefore = (await chrome.tabs.get(tabId).catch(() => undefined))?.url;
+  let r = await chrome.tabs.sendMessage(tabId, { type: 'limenn:deliver', job: cleaned }).catch((e: Error) => ({ ok: false, error: e.message }));
+  // Grok reloads the page once a new chat gets its own URL, which closes this message channel mid-delivery. If the
+  // tab moved to a new URL the message went out, and the restarted content script keeps following the answer.
+  if (!r?.ok && /channel closed|port closed|Receiving end does not exist/i.test(r?.error ?? '')) {
+    const urlAfter = (await chrome.tabs.get(tabId).catch(() => undefined))?.url;
+    if (urlAfter && urlAfter !== urlBefore) r = { ok: true };
+  }
   const done: JobState = r?.ok ? { ...cleaned, status: 'sent' } : { ...cleaned, status: 'error', error: r?.error ?? 'Could not send' };
   publish(done);
   await recordHistory(done, msg.displayPrompt ?? msg.input.prompt, [...msg.input.files.map((f) => f.name), ...(msg.input.vaultDocs ?? []).map((d) => d.name)]).catch(() => {});
