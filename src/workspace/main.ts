@@ -9,6 +9,8 @@ import { ENABLED_KEY } from '../shared/messages';
 import { loadVault } from '../shared/storage';
 import { PLACEHOLDER_RE, placeholderId } from '../pii/vault';
 import { SUPPORTED_EXT } from '../docvault/types';
+import { customEntities } from '../pii/custom';
+import { attachProtect } from '../shared/protect-popover';
 
 type Site = SiteAdapter['id'];
 interface Turn {
@@ -25,6 +27,8 @@ interface Turn {
   unprotected?: boolean;
   answer?: string;
   raw?: string;
+  /** Last note from the chat tab about why no answer text is there yet. */
+  diag?: { why: string; messages: number; hidden: boolean; at: number };
   done?: boolean;
   error?: string;
 }
@@ -106,20 +110,20 @@ async function render() {
           : t.status === 'running'
             ? `<div class="status"><span class="dot"></span>${esc(t.step ?? 'cleaning on this device…')}</div>`
             : t.status === 'cleaned'
-              ? `<div class="status error"><span class="dot"></span>not sent: something that looks personal is still in the cleaned text. <button data-show-clean="${t.id}">check it</button></div>`
+              ? `<div class="status error"><span class="dot"></span>not sent: something that looks personal is still in the cleaned text. <button data-show-clean="${t.id}" title="Show the cleaned text and what still looks personal">check it</button></div>`
               : t.unprotected
                 ? `<div class="status unprotected"><span class="dot"></span>protection off · sent to ${LABEL[t.site]} unchanged</div>`
-                : `<div class="status done"><span class="dot"></span>${t.protectedCount ?? 0} values protected · sent to ${LABEL[t.site]} <button data-show-clean="${t.id}">what ${LABEL[t.site]} saw</button></div>`;
+                : `<div class="status done"><span class="dot"></span>${t.protectedCount ?? 0} values protected · sent to ${LABEL[t.site]} <button data-show-clean="${t.id}" title="Show exactly what was sent, with placeholders">what ${LABEL[t.site]} saw</button></div>`;
       const ai =
         t.answer || t.raw
-          ? `<div class="msg ai"><div class="who"><b>${LABEL[t.site]}</b>${t.done ? '' : '· writing…'}</div><div class="text">${await answerHtml(t)}</div>${t.done ? `<div class="ai-actions"><button class="btn sm primary" data-copy="${t.id}">copy with your real data</button><button class="btn sm ghost" data-copy-raw="${t.id}">copy as ${LABEL[t.site]} wrote it</button></div>` : ''}</div>`
+          ? `<div class="msg ai"><div class="who"><b>${LABEL[t.site]}</b>${t.done ? '' : '· writing…'}</div><div class="text">${await answerHtml(t)}</div>${t.done ? `<div class="ai-actions"><button class="btn sm primary" data-copy="${t.id}" title="Copy the answer with your real data filled in">copy with your real data</button><button class="btn sm ghost" data-copy-raw="${t.id}" title="Copy the answer as the AI wrote it, with placeholders">copy as ${LABEL[t.site]} wrote it</button></div>` : ''}</div>`
           : t.status === 'sent'
-            ? `<div class="msg ai"><div class="who"><b>${LABEL[t.site]}</b>· waiting for the answer…</div></div>`
+            ? `<div class="msg ai"><div class="who"><b>${LABEL[t.site]}</b>· waiting for the answer…</div>${t.diag && Date.now() - t.diag.at < 20000 ? `<div class="text" style="opacity:.7;font-size:12px">${esc(t.diag.why)}${t.diag.hidden ? ' (the chat tab is in the background)' : ''}. <button data-show-chat="${t.site}">show the ${LABEL[t.site]} tab</button></div>` : ''}</div>`
             : '';
       return `<article class="turn" data-id="${t.id}">
-        <div class="msg you"><div class="who">you</div><div class="text">${esc(t.prompt)}</div>${t.files.length ? `<div class="files">${t.files.map((f) => `<span>${esc(f)}</span>`).join('')}</div>` : ''}</div>
+        <div class="msg you"><div class="who">you</div><div class="text" title="Click a word to protect it from now on">${esc(t.prompt)}</div>${t.files.length ? `<div class="files">${t.files.map((f) => `<span>${esc(f)}</span>`).join('')}</div>` : ''}</div>
         ${status}
-        <pre class="clean" data-clean="${t.id}" hidden>${esc(t.clean ?? '')}</pre>
+        <pre class="clean" data-clean="${t.id}" title="Click a word that should not have been sent to protect it from now on" hidden>${esc(t.clean ?? '')}</pre>
         ${ai}
       </article>`;
     }),
@@ -131,14 +135,14 @@ async function render() {
 function renderChips() {
   $('chips').hidden = !files.length && !picked.length;
   $('chips').innerHTML =
-    picked.map((d) => `<span class="chip">vault · ${esc(d.name)}<button data-unpick="${esc(d.id)}" aria-label="Remove">×</button></span>`).join('') +
-    files.map((f, i) => `<span class="chip">${esc(f.name)}<button data-file="${i}" aria-label="Remove">×</button></span>`).join('');
+    picked.map((d) => `<span class="chip">vault · ${esc(d.name)}<button data-unpick="${esc(d.id)}" aria-label="Remove" title="Remove this document from the message">×</button></span>`).join('') +
+    files.map((f, i) => `<span class="chip">${esc(f.name)}<button data-file="${i}" aria-label="Remove" title="Remove this file">×</button></span>`).join('');
 }
 
 function renderVaultPick() {
   const ready = docVault.docs.filter((d) => d.status === 'ready');
   $('vault-pick').innerHTML = ready.length
-    ? ready.map((d) => `<button data-pick="${esc(d.id)}" class="${picked.some((p) => p.id === d.id) ? 'on' : ''}"><span>${esc(d.name)}</span><small>${d.entityCount} protected</small></button>`).join('')
+    ? ready.map((d) => `<button data-pick="${esc(d.id)}" title="Attach this prepared document (cleaned instantly)" class="${picked.some((p) => p.id === d.id) ? 'on' : ''}"><span>${esc(d.name)}</span><small>${d.entityCount} protected</small></button>`).join('')
     : `<div class="empty">${docVault.folder ? 'No prepared documents yet. Progress is shown in the side panel.' : 'No vault folder linked. Link one in the side panel.'}</div>`;
 }
 
@@ -229,6 +233,13 @@ chrome.runtime.onMessage.addListener((msg) => {
     const running = items.flatMap((i) => Object.entries(i.steps).filter(([, s]) => s.status === 'running').map(([k, s]) => `${i.name.toLowerCase()} · ${s.info ?? k}`));
     turn.step = running[0] ? `cleaning on this device: ${running[0]}` : 'cleaning on this device…';
     render();
+  }
+  if (msg.type === 'limenn:answer-status') {
+    if (!turn.answer) {
+      turn.diag = { why: msg.why, messages: msg.messages, hidden: msg.hidden, at: Date.now() };
+      render();
+    }
+    return false;
   }
   if (msg.type === 'limenn:answer') {
     turn.answer = msg.text;
@@ -370,6 +381,16 @@ $('vault-pick').addEventListener('click', (e) => {
   renderChips();
   renderVaultPick();
 });
+// Click a word in your message (or in what the AI saw) to protect it, or everything shaped like it, from now on.
+attachProtect($('thread'), {
+  selector: '.msg.you .text, pre.clean',
+  onAdded: (rule, target) => {
+    const turn = thread.turns.find((t) => t.id === target.closest<HTMLElement>('.turn')?.dataset.id);
+    const sent = turn?.clean != null && customEntities(turn.clean, [rule]).length > 0;
+    return sent ? 'This message already went out with it; it is replaced from your next message on.' : 'Applies to every message and file from now on.';
+  },
+});
+
 /** The answer as plain text with every placeholder replaced by the real value (what the user pastes into an email). */
 async function restoredText(turn: Turn): Promise<string> {
   if (!turn.raw) return turn.answer ?? '';
@@ -379,6 +400,7 @@ async function restoredText(turn: Turn): Promise<string> {
 
 $('thread').addEventListener('click', async (e) => {
   const el = e.target as HTMLElement;
+  if (el.dataset.showChat) return void chrome.runtime.sendMessage({ type: 'limenn:workspace:show-chat', site: el.dataset.showChat });
   const copyId = el.dataset.copy ?? el.dataset.copyRaw;
   if (copyId) {
     const turn = thread.turns.find((t) => t.id === copyId);

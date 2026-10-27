@@ -20,11 +20,16 @@ You read:      Dear Maria Keller, … your settlement of CHF 48,000 …        �
 
 ## Install in 1 minute
 
-1. **Download** `limenn-<version>.zip` from [Releases](../../releases/latest) and unzip it.
-2. Open **`chrome://extensions`**, switch on **Developer mode** (top right) and click **Load unpacked**. Choose the unzipped folder.
-3. A welcome page opens and walks you through the rest. Pin limenn with the puzzle icon 🧩 so it's always one click away.
+1. **Download** the zip for your browser from [Releases](../../releases/latest) and unzip it:
+   - **Chrome, Edge, Brave, Arc** (Chromium 120+): `limenn-<version>.zip`
+   - **Firefox** (128+): `limenn-firefox-<version>.zip`
+2. **Chrome & co.:** open **`chrome://extensions`**, switch on **Developer mode** (top right) and click **Load unpacked**. Choose the unzipped folder.
+   **Firefox:** open **`about:debugging#/runtime/this-firefox`**, click **Load Temporary Add-on…** and choose the `manifest.json` inside the unzipped folder. Firefox removes temporary add-ons when it quits; see below for a permanent install.
+3. A welcome page opens and walks you through the rest. Pin limenn so it's always one click away.
 
-Works in Chrome, Edge, Brave and Arc (Chromium 120+). A Chrome Web Store listing is on its way.
+Works in Chrome, Edge, Brave and Arc (Chromium 120+) and Firefox (128+). A Chrome Web Store listing is on its way.
+
+**Firefox differences.** limenn opens in Firefox's sidebar (toolbar button or View → Sidebar) instead of a side panel. The *document vault* (linking a folder for prepared documents) needs a folder picker that Firefox doesn't have, so it is hidden there; you can still attach files by hand. Everything else works the same. Firefox only keeps add-ons that Mozilla has signed (Firefox Developer Edition, Nightly and ESR can turn that check off via `xpinstall.signatures.required`).
 
 <details>
 <summary><b>Build from source instead</b></summary>
@@ -32,9 +37,10 @@ Works in Chrome, Edge, Brave and Arc (Chromium 120+). A Chrome Web Store listing
 ```bash
 git clone https://github.com/jatlantic/Limenn.git && cd Limenn
 npm install
-npm run build        # downloads the pinned, hash-checked models once, then builds into dist/
+npm run build          # Chrome: downloads the pinned, hash-checked models once, then builds into dist/
+npm run build:firefox  # Firefox: the same sources, built into dist-firefox/
 ```
-Then load the `dist/` folder as above. Run `npm test` for the test suite. The optional second detector (`gliner-web-q8.onnx`) is part of the release package. To include it in your own build, set `LIMENN_WEB_MODEL_URL` to a URL or a local path of the file (`LIMENN_WEB_MODEL_URL=/path/to/gliner-web-q8.onnx npm run build`); without it the build prints a warning and limenn uses its rules and the name model. All other models are downloaded automatically on the first build.
+Then load the `dist/` (or `dist-firefox/`) folder as above. Run `npm test` for the test suite. The optional second detector (`gliner-web-q8.onnx`) is part of the release package. To include it in your own build, set `LIMENN_WEB_MODEL_URL` to a URL or a local path of the file (`LIMENN_WEB_MODEL_URL=/path/to/gliner-web-q8.onnx npm run build`); without it the build prints a warning and limenn uses its rules and the name model. All other models are downloaded automatically on the first build.
 </details>
 
 ## Use it
@@ -44,6 +50,8 @@ Then load the `dist/` folder as above. Run `npm test` for the test suite. The op
 | **workspace**: limenn's own tab, and the most private way to use it. Write, pick ChatGPT, Claude or Grok, and read the answer with your data restored. Switch assistants mid-conversation, copy answers with one click, and see a history of the session (deleted when the browser closes). | <img src="docs/assets/workspace.png" width="420" alt="workspace"> |
 | **limenn bar**: appears at the top of chatgpt.com, claude.ai and grok.com. Type there instead of the site's own box. Drag it anywhere on the page. | <img src="docs/assets/bar.png" width="420" alt="limenn bar on chatgpt.com"> |
 | **side panel**: click the toolbar icon to see what was found and exactly what the AI received, and to link a **document folder**. PDFs, Word, Excel, PowerPoint, e-mails and scans are prepared ahead of time, so attaching them is instant. | <img src="docs/assets/sidepanel.png" width="260" alt="side panel"> |
+
+**Your own protected list.** Click any word in your message, in *what ChatGPT saw* or in the side panel, and limenn replaces it from then on, in every message and file. Grow the selection with ‹ › to protect a whole phrase. For IDs it offers the value's shape instead: click `EMP-20431` and choose *everything shaped like* `EMP-#####` (`#` digit, `A` letter, `*` any characters inside a word, e.g. `*@acme.ch`). Manage the list, try it on a text, and export or import it under **Settings**. It is stored only in this browser.
 
 Switch protection off and on at any time with the **protect** switch in the bar, the side panel or the workspace.
 

@@ -63,3 +63,23 @@ input[type='text'], input[type='password'], input[type='number'], textarea, sele
 }
 input:focus, textarea:focus, select:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 a { color: var(--accent); }
+
+/* "Always protect" popover (shared/protect-popover.ts) */
+.lp-pop { position: fixed; z-index: 50; width: min(320px, calc(100vw - 16px)); background: var(--card); border: 1px solid var(--accent); box-shadow: 0 16px 40px -16px rgba(26, 60, 255, 0.45); padding: 10px 12px 12px; display: grid; gap: 8px; font: 13px/1.4 var(--sans); color: var(--ink); }
+.lp-head { display: flex; align-items: center; gap: 4px; }
+.lp-head .lp-val { flex: 1; min-width: 0; padding: 2px 6px; background: var(--accent-soft); color: var(--manual); font-weight: 500; overflow-wrap: anywhere; cursor: pointer; }
+.lp-grow, .lp-x { width: 24px; height: 24px; border: 1px solid var(--line); background: var(--card); color: var(--accent); padding: 0; line-height: 1; }
+.lp-grow:hover, .lp-x:hover { border-color: var(--accent); }
+.lp-x { border-color: transparent; color: var(--muted); }
+.lp-type { display: flex; align-items: center; gap: 6px; white-space: nowrap; font: 400 11px var(--mono); color: var(--muted); }
+.lp-type select { flex: 1; min-width: 0; font: 400 11px var(--mono); border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 2px 4px; }
+.lp-words { justify-content: flex-start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; }
+.lp-shape { display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 8px; }
+.lp-or, .lp-hint, .lp-count { font: 400 11px var(--mono); color: var(--muted); }
+.lp-count.bad { color: var(--red); }
+.lp-shape-in { font: 500 13px var(--mono); border: 1px solid var(--line-strong); padding: 5px 7px; color: var(--ink); background: var(--card); }
+.lp-shape-in:focus { outline: none; border-color: var(--accent); }
+.lp-shape-add { justify-self: start; text-transform: none; }
+.lp-shape-add:disabled { opacity: 0.45; cursor: not-allowed; }
+.lp-done { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.lp-done b { color: var(--manual); font-weight: 500; }

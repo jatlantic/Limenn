@@ -1,5 +1,6 @@
 import type { RedactResult, Stage, StageEvent } from '../pii/pipeline';
-import type { Entity, EntityType, Settings } from '../pii/types';
+import type { ProtectedRule } from '../pii/custom';
+import type { Entity, Settings } from '../pii/types';
 import type { VaultData } from '../pii/vault';
 import type { IndexEntry } from '../docvault/types';
 import type { Risk } from '../pii/guard';
@@ -63,7 +64,8 @@ export interface EngineRun {
   settings: Settings;
   vault: VaultData | undefined;
   allow: string[];
-  manual: [string, EntityType][];
+  /** The user's protected words and shapes (see pii/custom.ts). */
+  rules: ProtectedRule[];
 }
 
 export interface EngineResult {
@@ -103,7 +105,10 @@ export const DOCVAULT_KEY = 'limenn.docvault';
 export const emptyDocVault = (): DocVaultState => ({ folder: null, status: 'idle', docs: [] });
 
 export const ALLOW_KEY = 'limenn.allow';
+/** Before 1.1: manual marks as [value, type] pairs; migrated into PROTECTED_KEY by loadProtected(). */
 export const MANUAL_KEY = 'limenn.manual';
+/** chrome.storage.local: the user's "always protect" list (ProtectedRule[]); never leaves this browser. */
+export const PROTECTED_KEY = 'limenn.protected';
 export const LAST_JOB_KEY = 'limenn.lastJob';
 export const LAST_INPUT_KEY = 'limenn.lastInput';
 /** chrome.storage.session: the chat tab the workspace uses per site ({ chatgpt: tabId, claude: tabId }). */

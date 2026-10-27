@@ -1,16 +1,20 @@
 // Service worker: routes cleaning jobs between the Limenn bar (content script), the side panel and the
 // offscreen engine; persists the placeholder mapping; relays live progress to the claude.ai tab.
-import type { EntityType } from './pii/types';
-import { ALLOW_KEY, HISTORY_KEY, type HistoryEntry, WS_TABS_KEY, DOCVAULT_KEY, type DocVaultState, emptyDocVault, type EngineResult, type JobInput, type JobState, LAST_INPUT_KEY, LAST_JOB_KEY, MANUAL_KEY } from './shared/jobs';
-import { loadSettings, saveVault } from './shared/storage';
+import { ALLOW_KEY, HISTORY_KEY, type HistoryEntry, WS_TABS_KEY, DOCVAULT_KEY, type DocVaultState, emptyDocVault, type EngineResult, type JobInput, type JobState, LAST_INPUT_KEY, LAST_JOB_KEY } from './shared/jobs';
+import { loadProtected, loadSettings, saveVault } from './shared/storage';
 import { Vault, type VaultData } from './pii/vault';
 import { VAULT_KEY } from './shared/messages';
 import { ADAPTERS, NEW_CHAT_URL, pickAdapter, type SiteAdapter } from './content/adapters';
+import { IS_FIREFOX } from './shared/platform';
 
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);
+// Chrome has a side panel; Firefox has a sidebar (sidebar_action in its manifest) that the toolbar button toggles.
+const firefoxSidebar = () => (globalThis as unknown as { browser?: { sidebarAction?: { open(): Promise<void>; toggle(): Promise<void> } } }).browser?.sidebarAction;
+if (chrome.sidePanel) chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);
+else chrome.action.onClicked.addListener(() => void firefoxSidebar()?.toggle().catch(console.error));
 
+// Firefox may not offer this (or content scripts may not reach storage.session); the content script then asks us for the vault.
 const allowContentScripts = () =>
-  chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' }).catch(console.error);
+  Promise.resolve(chrome.storage.session.setAccessLevel?.({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' })).catch(console.error);
 chrome.runtime.onInstalled.addListener(allowContentScripts);
 // First install: show the three steps to get going.
 chrome.runtime.onInstalled.addListener((d) => d.reason === 'install' && chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') }));
@@ -19,8 +23,23 @@ allowContentScripts();
 
 // ---------- offscreen engine ----------
 
+// Chrome runs the engine in an offscreen document. Firefox has no offscreen API, but its background page has a DOM,
+// so the same engine page runs in a hidden iframe there.
 let creating: Promise<void> | null = null;
+let engineFrame: HTMLIFrameElement | null = null;
 async function ensureEngine() {
+  if (!chrome.offscreen) {
+    if (engineFrame?.isConnected) return;
+    creating ??= (async () => {
+      engineFrame = document.createElement('iframe');
+      engineFrame.hidden = true;
+      engineFrame.src = chrome.runtime.getURL('engine.html');
+      document.documentElement.append(engineFrame);
+      keepAlive();
+      await waitForEngine();
+    })().finally(() => (creating = null));
+    return creating;
+  }
   const existing = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT] });
   if (existing.length) return;
   creating ??= chrome.offscreen
@@ -28,6 +47,13 @@ async function ensureEngine() {
     .then(waitForEngine)
     .finally(() => (creating = null));
   await creating;
+}
+
+/** Firefox unloads an idle background page after ~30 s, which would drop the engine (and its loaded models) mid-job. */
+let keepAliveTimer: number | undefined;
+function keepAlive() {
+  if (keepAliveTimer != null) return;
+  keepAliveTimer = window.setInterval(() => void chrome.runtime.getPlatformInfo(), 20_000);
 }
 
 /** createDocument resolves before the engine's module has registered its listener; messages sent earlier are lost. */
@@ -89,6 +115,14 @@ async function storedVault(): Promise<VaultData | undefined> {
   return (s[VAULT_KEY] ?? l[VAULT_KEY]) as VaultData | undefined;
 }
 
+/** Firefox content scripts get no storage.session change events, so tell the chat tabs to reload the vault. */
+function notifyVaultChanged() {
+  chrome.tabs
+    .query({ url: ADAPTERS.flatMap((a) => a.hosts.map((h) => `https://${h}/*`)) })
+    .then((tabs) => tabs.forEach((t) => t.id != null && chrome.tabs.sendMessage(t.id, { type: 'limenn:vault-changed' }).catch(() => {})))
+    .catch(() => {});
+}
+
 /** Session history: one entry per question, updated as the job progresses. */
 async function recordHistory(job: JobState, prompt: string, files: string[]) {
   const list = ((await chrome.storage.session.get(HISTORY_KEY))[HISTORY_KEY] ?? []) as HistoryEntry[];
@@ -111,7 +145,7 @@ async function recordHistory(job: JobState, prompt: string, files: string[]) {
 async function runJob(job: JobState, input: JobInput, displayPrompt = input.prompt): Promise<JobState> {
   const settings = await loadSettings();
   // Review corrections persist across restarts (chrome.storage.local).
-  const session = await chrome.storage.local.get([ALLOW_KEY, MANUAL_KEY]);
+  const session = await chrome.storage.local.get(ALLOW_KEY);
   await chrome.storage.session.set({ [LAST_INPUT_KEY]: { input, tabId: job.tabId, source: job.source, autoSend: job.autoSend, title: job.title } });
   await ensureEngine();
   publish(job);
@@ -123,9 +157,10 @@ async function runJob(job: JobState, input: JobInput, displayPrompt = input.prom
     settings,
     vault: await storedVault(),
     allow: [...((session[ALLOW_KEY] as string[]) ?? []), ...settings.allowList],
-    manual: (session[MANUAL_KEY] as [string, EntityType][]) ?? [],
+    rules: await loadProtected(),
   });
   await saveVault(new Vault(res.vault), settings.persistMapping);
+  if (IS_FIREFOX) notifyVaultChanged();
   publish(res.job);
   await recordHistory(res.job, displayPrompt, [...input.files.map((f) => f.name), ...(input.vaultDocs ?? []).map((d) => d.name)]).catch(() => {});
   return res.job;
@@ -141,11 +176,35 @@ const titleOf = (input: JobInput) =>
   (input.prompt.trim().split('\n')[0] || input.files.map((f) => f.name).join(', ') || 'Untitled').slice(0, 80);
 
 /** What the Limenn bar (content script on the chat site) may ask for; everything else is for extension pages only. */
-const CONTENT_MESSAGES = new Set(['limenn:clean', 'limenn:status', 'limenn:answer', 'limenn:warm', 'limenn:open-panel', 'limenn:workspace:open']);
+const CONTENT_MESSAGES = new Set(['limenn:clean', 'limenn:status', 'limenn:answer', 'limenn:answer-status', 'limenn:warm', 'limenn:open-panel', 'limenn:workspace:open', 'limenn:vault:get']);
 const ENGINE_URL = chrome.runtime.getURL('engine.html');
 const WORKSPACE_URL = chrome.runtime.getURL('workspace.html');
 
 // ---------- workspace: Limenn's own tab, with ChatGPT / Claude working in a background tab ----------
+
+const woken = new Set<string>();
+async function wakeTab(tabId: number, windowId: number) {
+  const [prev] = await chrome.tabs.query({ active: true, windowId }).catch(() => []);
+  await chrome.tabs.update(tabId, { active: true }).catch(() => {});
+  await new Promise((r) => setTimeout(r, 2500));
+  if (prev?.id != null && prev.id !== tabId) await chrome.tabs.update(prev.id, { active: true }).catch(() => {});
+}
+
+/**
+ * Focus the workspace tab, or open one. Found through runtime.getContexts: querying tabs by URL would need the
+ * "tabs" permission, which the extension doesn't ask for (it failed silently, so the button did nothing).
+ */
+async function openWorkspace(windowId?: number) {
+  // Firefox has no getContexts, but it lets an extension find its own pages by URL.
+  const tabId = chrome.runtime.getContexts
+    ? (await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.TAB], documentUrls: [WORKSPACE_URL] }).catch(() => []))[0]?.tabId
+    : (await chrome.tabs.query({ url: WORKSPACE_URL }).catch(() => []))[0]?.id;
+  if (tabId != null && tabId >= 0) {
+    const tab = await chrome.tabs.update(tabId, { active: true }).catch(() => undefined);
+    if (tab) return void chrome.windows.update(tab.windowId, { focused: true }).catch(() => {});
+  }
+  await chrome.tabs.create({ url: WORKSPACE_URL, ...(windowId != null ? { windowId } : {}) });
+}
 
 /** Wait until the Limenn content script in a tab answers. */
 async function contentReady(tabId: number, timeout = 30000) {
@@ -323,7 +382,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
 
     case 'limenn:workspace:open':
-      chrome.tabs.query({ url: WORKSPACE_URL }).then(([t]) => (t?.id ? chrome.tabs.update(t.id, { active: true }) : chrome.tabs.create({ url: WORKSPACE_URL })));
+      openWorkspace(sender.tab?.windowId);
       return false;
 
     case 'limenn:workspace:open-site':
@@ -348,8 +407,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return false;
 
     case 'limenn:open-panel':
-      if (sender.tab?.id != null) chrome.sidePanel.open({ tabId: sender.tab.id }).catch(console.error);
+      if (chrome.sidePanel) {
+        if (sender.tab?.id != null) chrome.sidePanel.open({ tabId: sender.tab.id }).catch(console.error);
+      } else {
+        // Firefox only opens the sidebar from a user action; if this relay is not accepted as one, the toolbar button still works.
+        firefoxSidebar()?.open().catch(() => {});
+      }
       return false;
+
+    case 'limenn:answer-status':
+      // Some sites hold back rendering in a tab nobody looks at: if the answer has not shown up, bring the chat tab
+      // forward for a moment, then go back to where the user was.
+      if (msg.hidden && sender.tab?.id != null && !woken.has(msg.jobId)) {
+        woken.add(msg.jobId);
+        wakeTab(sender.tab.id, sender.tab.windowId);
+      }
+      return false;
+
+    case 'limenn:vault:get':
+      // Content scripts that cannot read chrome.storage.session (Firefox) get the vault from here.
+      storedVault().then((vault) => sendResponse({ ok: true, vault: vault ?? null }));
+      return true;
   }
   return false;
 });

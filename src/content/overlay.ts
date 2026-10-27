@@ -64,13 +64,13 @@ export function mountOverlay(site: SiteAdapter, deliver: Deliver, pressSend: Cli
         <button class="icon vault-btn" title="Prepared documents from your vault folder" aria-label="Vault documents" aria-expanded="false">${ICON.vault}<span class="n" hidden></span></button>
         <button class="icon attach" title="Attach PDF or text file" aria-label="Attach file">${ICON.clip}</button>
         <button class="icon minimize" title="Minimize" aria-label="Minimize">${ICON.min}</button>
-        <button class="send" aria-label="Clean and send">Send ${ICON.send}</button>
+        <button class="send" aria-label="Clean and send" title="Remove personal data on this computer, then put the cleaned text into the chat (Enter)">Send ${ICON.send}</button>
       </div>
       <div class="chips" hidden></div>
       <div class="vault-pop" hidden>
         <input class="vault-q" type="search" placeholder="Search prepared documents" aria-label="Search vault documents" />
         <div class="vault-list" role="listbox" aria-multiselectable="true"></div>
-        <div class="vault-foot"><span class="vault-status"></span><span class="spacer"></span><button class="link vault-manage">Manage vault ↗</button></div>
+        <div class="vault-foot"><span class="vault-status"></span><span class="spacer"></span><button class="link vault-manage" title="Link or manage your document folder in the side panel">Manage vault ↗</button></div>
       </div>
       <div class="foot">
         <div class="idle-info"></div>
@@ -80,10 +80,10 @@ export function mountOverlay(site: SiteAdapter, deliver: Deliver, pressSend: Cli
         <label class="toggle" title="Show the cleaned prompt in ${L}'s composer and let you review before sending"><input type="checkbox" class="review" /> Review first</label>
         <label class="toggle protect" title="Switch Limenn's protection on or off (all tabs)"><input type="checkbox" class="enabled" checked /> Protect</label>
         <button class="link workspace" title="Write and read in Limenn's own tab">Workspace ↗</button>
-        <button class="link details">Details ↗</button>
+        <button class="link details" title="Open the side panel: what was found and exactly what the AI received">Details ↗</button>
       </div>
     </div>
-    <button class="pill" hidden><span class="word">limenn</span><span class="pill-off">off</span>${logoSvg(12, 'limenn-g2')}</button>`;
+    <button class="pill" title="Open the Limenn bar" hidden><span class="word">limenn</span><span class="pill-off">off</span>${logoSvg(12, 'limenn-g2')}</button>`;
   document.documentElement.appendChild(host);
 
   const $ = <T extends Element = HTMLElement>(s: string) => root.querySelector(s) as unknown as T;
@@ -143,7 +143,7 @@ export function mountOverlay(site: SiteAdapter, deliver: Deliver, pressSend: Cli
     chips.hidden = !files.length && !picked.length;
     chips.innerHTML =
       picked.map((d) => `<span class="chip vault" title="Prepared in your vault — sent instantly">${ICON.vault}${esc(d.name)}<button class="x" data-vault="${esc(d.id)}" aria-label="Remove">×</button></span>`).join('') +
-      files.map((f, i) => `<span class="chip">${ICON.file}${esc(f.name)}<button class="x" data-i="${i}" aria-label="Remove">×</button></span>`).join('');
+      files.map((f, i) => `<span class="chip">${ICON.file}${esc(f.name)}<button class="x" data-i="${i}" aria-label="Remove" title="Remove this file">×</button></span>`).join('');
     const n = vaultBtn.querySelector<HTMLElement>('.n')!;
     n.hidden = !picked.length;
     n.textContent = String(picked.length);
@@ -172,7 +172,7 @@ export function mountOverlay(site: SiteAdapter, deliver: Deliver, pressSend: Cli
         .map((d) => {
           const on = picked.some((p) => p.id === d.id);
           const st = `${d.entityCount} protected`;
-          return `<button class="vault-item${on ? ' on' : ''}" role="option" aria-selected="${on}" data-id="${esc(d.id)}"><span class="box">${on ? '✓' : ''}</span><span class="nm">${esc(d.name)}${d.path !== d.name ? `<small>${esc(d.path)}</small>` : ''}</span><span class="st ${d.status}">${st}</span></button>`;
+          return `<button class="vault-item${on ? ' on' : ''}" title="${on ? 'Remove from' : 'Attach to'} this message (already prepared, cleaned instantly)" role="option" aria-selected="${on}" data-id="${esc(d.id)}"><span class="box">${on ? '✓' : ''}</span><span class="nm">${esc(d.name)}${d.path !== d.name ? `<small>${esc(d.path)}</small>` : ''}</span><span class="st ${d.status}">${st}</span></button>`;
         })
         .join('');
     }
@@ -252,9 +252,9 @@ export function mountOverlay(site: SiteAdapter, deliver: Deliver, pressSend: Cli
       summary.innerHTML = `<span class="err">${esc(job.error ?? 'Something went wrong')}</span>`;
     } else if (job.status === 'cleaned') {
       const risky = job.items.flatMap((i) => i.risks ?? []).filter((r) => r.severity === 'high').length;
-      summary.innerHTML = `<span class="badge">${n} protected</span>${risky ? `<span class="err">⚠ ${risky} possible leak${risky > 1 ? 's' : ''} — check the side panel or ${L}'s box before sending.</span>` : `<span>Cleaned prompt is in ${L}'s box — review it there.</span>`}<button class="primary-sm send-now">Send to ${L}</button>`;
+      summary.innerHTML = `<span class="badge">${n} protected</span>${risky ? `<span class="err">⚠ ${risky} possible leak${risky > 1 ? 's' : ''} — check the side panel or ${L}'s box before sending.</span>` : `<span>Cleaned prompt is in ${L}'s box — review it there.</span>`}<button class="primary-sm send-now" title="Send the cleaned message now">Send to ${L}</button>`;
     } else if (job.status === 'sent') {
-      summary.innerHTML = `<span class="badge">${n} protected</span><span>${L} only saw placeholders · <span class="restored-note">highlighted values were filled in by Limenn</span></span><button class="link raw-toggle">${raw ? 'Show restored answer' : `Show what ${L} wrote`}</button>`;
+      summary.innerHTML = `<span class="badge">${n} protected</span><span>${L} only saw placeholders · <span class="restored-note">highlighted values were filled in by Limenn</span></span><button class="link raw-toggle" title="Switch between your real data and the placeholders the AI saw">${raw ? 'Show restored answer' : `Show what ${L} wrote`}</button>`;
     }
   }
 

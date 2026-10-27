@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "limenn",
   "short_name": "limenn",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Removes personal data from prompts and files on your device before they reach ChatGPT, Claude or Grok, and restores it in answers.",
   "minimum_chrome_version": "120",
   "icons": {

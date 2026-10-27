@@ -23,12 +23,54 @@
       #msg { color: var(--muted); font-size: 13px; }
       #msg.ok { color: var(--accent-deep); } #msg.err { color: var(--red); }
       @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+      .pr { margin-bottom: 14px; }
+      .pr-add { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+      .pr input, .pr select, .pr textarea { font: inherit; border: 1px solid var(--line-strong); padding: 6px 8px; background: var(--card); color: var(--ink); min-width: 0; }
+      .pr input:focus, .pr textarea:focus { outline: none; border-color: var(--accent); }
+      .pr-kind { font: 400 11px var(--mono); color: var(--muted); min-height: 1em; }
+      .pr-kind.bad { color: var(--red); }
+      .pr-list { list-style: none; margin: 0; padding: 0; display: grid; }
+      .pr-list li { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--line); }
+      .pr-list .k { font: 400 10.5px var(--mono); padding: 1px 6px; border: 1px solid var(--line-strong); color: var(--muted); }
+      .pr-list .k.shape { border-color: var(--manual); color: var(--manual); }
+      .pr-list .v { font-weight: 500; overflow-wrap: anywhere; }
+      .pr-list .v.shape { font-family: var(--mono); }
+      .pr-list .t { font: 400 11px var(--mono); color: var(--muted); }
+      .pr-list .empty { display: block; color: var(--faint); border: 0; }
+      .pr-try summary { cursor: pointer; font: 400 12px var(--mono); color: var(--accent); }
+      .pr-try textarea { width: 100%; margin-top: 8px; }
+      .pr-try-out { white-space: pre-wrap; font-size: 13px; margin-top: 6px; color: var(--ink); }
+      .pr-try-out mark { background: var(--amber-bg); color: var(--manual); }
+      .pr-io { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      @media (max-width: 560px) { .pr-add { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
     <header><span class="wordmark">limenn</span><span id="logo"></span><span class="eyebrow" style="margin-left:8px">privacy shield</span></header>
     <h1 class="lead">Settings</h1>
     <p class="sub">Everything runs on this computer. Limenn makes no network requests: the detection models ship with the extension, and your text and files never leave this browser.</p>
+    <section class="card pr" id="protected" aria-labelledby="pr-h">
+      <div class="sec-head"><h2 id="pr-h">Protected words &amp; patterns</h2><span class="eyebrow">saved on this computer</span></div>
+      <p class="help">Always replaced, in every message and file, even if limenn wouldn't find them on its own. Add a word or phrase (<b>Projekt Falke</b>), or a pattern: <b>#</b> one digit, <b>A</b> one letter, <b>*</b> any characters inside a word, such as <b>EMP-#####</b> or <b>*@acme.ch</b>. You can also click any word in the workspace or the side panel.</p>
+      <div class="pr-add">
+        <input id="pr-value" placeholder="word, phrase or pattern" aria-label="Word, phrase or pattern" autocomplete="off" spellcheck="false" />
+        <select id="pr-type" aria-label="Replace as"></select>
+        <button type="button" id="pr-add" class="btn primary sm" title="Add this word, phrase or pattern to your protected list">add</button>
+      </div>
+      <div id="pr-kind" class="pr-kind" aria-live="polite"></div>
+      <ul id="pr-list" class="pr-list"></ul>
+      <details class="pr-try"><summary>try it on a text</summary>
+        <textarea id="pr-try" rows="3" placeholder="Paste a text to see what your list protects (it stays on this page)"></textarea>
+        <div id="pr-try-out" class="pr-try-out"></div>
+      </details>
+      <div class="pr-io">
+        <button type="button" id="pr-export" class="btn sm" title="Save your protected list as a file, e.g. to move it to another computer">export list</button>
+        <button type="button" id="pr-import" class="btn sm" title="Add the entries from an exported file to your list (duplicates are skipped)">import list</button>
+        <input type="file" id="pr-file" accept="application/json,.json" hidden />
+        <span class="help">Moves your list to another computer. The file contains your protected terms: keep it private.</span>
+      </div>
+    </section>
+
     <form id="form">
       <section class="card">
         <div class="sec-head"><h2>Names in context</h2><span class="eyebrow">on device</span></div>
@@ -59,7 +101,7 @@
         <p class="help" style="margin-top:-8px">Off: the vault lives only for this browser session; older answers then keep their placeholders.</p>
       </section>
 
-      <div class="actions"><button class="btn primary" type="submit">Save settings</button><span id="msg"></span></div>
+      <div class="actions"><button class="btn primary" type="submit" title="Save the settings below (the protected list saves by itself)">Save settings</button><span id="msg"></span></div>
     </form>
     <p class="help" style="margin-top:28px">limenn reduces, but cannot guarantee to remove, all personal data. It is not legal advice and not affiliated with OpenAI, Anthropic or xAI. Free for noncommercial use. <a href="https://github.com/jatlantic/Limenn/blob/main/DISCLAIMER.md" target="_blank" rel="noopener">Disclaimer</a> · <a href="https://github.com/jatlantic/Limenn/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a> · <a href="https://github.com/jatlantic/Limenn/blob/main/THIRD_PARTY_NOTICES.md" target="_blank" rel="noopener">Licenses</a></p>
     <script type="module" src="/src/options/main.ts"></script>

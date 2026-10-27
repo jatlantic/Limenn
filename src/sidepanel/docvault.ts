@@ -1,16 +1,19 @@
 // Side panel section for the Document Vault: link a folder, watch documents get prepared, and review a
 // document's detections ahead of time (per-document allow/protect lists, applied every time it is sent).
 import { loadFolderHandle, requestFolderAccess, saveFolderHandle, unlinkFolder } from '../docvault/browser-fs';
-import { manualEntities } from '../docvault/cache';
+import { customEntities, wordsRules } from '../pii/custom';
 import type { PreparedDoc } from '../docvault/types';
 import { mergeEntities } from '../pii/merge';
 import type { EntityType } from '../pii/types';
+import { HAS_FOLDER_PICKER } from '../shared/platform';
 import { DOCVAULT_KEY, type DocVaultState, emptyDocVault } from '../shared/jobs';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 export function initDocVault(toast: (msg: string, error?: boolean) => void) {
+  // Firefox has no folder picker, so the Document vault is a Chromium-only feature; attaching files by hand still works.
+  if (!HAS_FOLDER_PICKER) return void ($('docvault').hidden = true);
   let state: DocVaultState = emptyDocVault();
   let open: PreparedDoc | null = null;
 
@@ -59,7 +62,7 @@ export function initDocVault(toast: (msg: string, error?: boolean) => void) {
     $('dv-review-name').textContent = open.name;
     const allow = new Set(open.review.allow);
     // Same view the send path produces: cached detections + this doc's manual marks.
-    const ents = mergeEntities([...manualEntities(open.text, open.review.manual), ...open.entities]);
+    const ents = mergeEntities([...customEntities(open.text, wordsRules(open.review.manual)), ...open.entities]);
     let html = '';
     let pos = 0;
     for (const e of ents) {

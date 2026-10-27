@@ -1,10 +1,10 @@
 import { findCandidates } from './candidates';
-import { mergeEntities } from './merge';
+import { joinNameParts, mergeEntities } from './merge';
 import { detectNer, type TokenClassifier } from './ner';
 import { detectRegex } from './regex';
 import type { Classifier, ClassifierResult, Entity, Settings } from './types';
 import { combineModels, DEFAULT_ENSEMBLE } from './ensemble';
-import { passesProperNounGate } from './filters';
+import { passesLowercaseNameGate, passesProperNounGate } from './filters';
 import { detectKnown, type KnownValue } from './gazetteer';
 import { isProductLike, isPublicTerm } from './public-terms';
 import { Vault } from './vault';
@@ -25,6 +25,14 @@ export function titleCaseCapsRuns(text: string): string {
     return out.length === run.length ? out : run;
   });
 }
+
+/**
+ * People type names in lowercase ("bitte schreib hans meier"), which the cased NER model never tags. For a second
+ * pass every lowercase word is capitalised (same length, so offsets map 1:1); only PERSON hits that were all lowercase
+ * in the original are kept from it. Limited to prompt-sized texts, where casual typing happens.
+ */
+export const LOWERCASE_PASS_MAX = 4000;
+export const capitalizeLowercaseWords = (text: string) => text.replace(/(?<![\p{L}\p{N}])\p{Ll}[\p{Ll}'’]+/gu, (w) => w[0].toUpperCase() + w.slice(1));
 
 /** A model (NER/Jev) hit that is a product, platform or public institution, not personal data. */
 const isPublic = (e: Entity) => (e.source === 'ner' || e.source === 'jev') && (isPublicTerm(e.text) || isProductLike(e.text));
@@ -164,6 +172,13 @@ export async function detect(text: string, opts: Omit<RedactOptions, 'vault'>): 
     const tokenHits = useToken
       ? (await detectNer(titleCaseCapsRuns(text), opts.ner!)).map((e) => trimEntity(text, { ...e, text: text.slice(e.start, e.end) })).filter(keepModelHit)
       : [];
+    if (useToken && text.length <= LOWERCASE_PASS_MAX && /(?<![\p{L}\p{N}])\p{Ll}{2,}/u.test(text)) {
+      const lower = (await detectNer(capitalizeLowercaseWords(text), opts.ner!))
+        .map((e) => trimEntity(text, { ...e, text: text.slice(e.start, e.end) }))
+        .filter((e) => e.type === 'PERSON' && !/\p{Lu}/u.test(e.text) && notAllowed(e) && !isPublic(e) && passesLowercaseNameGate(e, text))
+        .filter((e) => !tokenHits.some((t) => e.start < t.end && t.start < e.end));
+      tokenHits.push(...lower);
+    }
     const spanHits = opts.spanNer ? (await opts.spanNer(text)).map((e) => trimEntity(text, { ...e, source: 'ner' as const })).filter(keepModelHit) : [];
     if (useToken && opts.spanNer) {
       ({ accepted: nerAccepted, uncertain: nerLow } = combineModels(tokenHits, spanHits, ens));
@@ -179,7 +194,8 @@ export async function detect(text: string, opts: Omit<RedactOptions, 'vault'>): 
     emit({ stage: 'ner', status: 'skipped', info: settings.enableNer ? 'model unavailable' : 'disabled' });
   }
 
-  let merged = mergeEntities([...(opts.manual ?? []), ...regexHits, ...nerAccepted]);
+  // "Send unchanged" also beats the user's own patterns, so one match of a shape can be exempted.
+  let merged = joinNameParts(text, mergeEntities([...(opts.manual ?? []).filter(notAllowed), ...regexHits, ...nerAccepted]));
 
   let jev: ClassifierResult | undefined;
   let candidates = 0;
@@ -224,7 +240,7 @@ export interface ApplyOptions {
 export function applyEntities(text: string, detected: Entity[], vault: Vault, opts: ApplyOptions = {}) {
   const allow = new Set([...(opts.allow ?? [])].map(allowKey));
   const notAllowed = (e: Entity) => !allow.has(allowKey(e.text));
-  let merged = mergeEntities([...(opts.manual ?? []), ...detected.filter(notAllowed)]);
+  let merged = mergeEntities([...(opts.manual ?? []).filter(notAllowed), ...detected.filter(notAllowed)]);
 
   // Register placeholders, then catch repeated occurrences of known values.
   for (const e of merged) vault.placeholderFor(e.type, e.text);

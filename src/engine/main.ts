@@ -3,6 +3,7 @@
 // and the updated vault goes back to the background worker, which persists it.
 import * as pdfjs from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { customEntities } from '../pii/custom';
 import { redact } from '../pii/pipeline';
 import { residualRisks } from '../pii/guard';
 import type { Entity } from '../pii/types';
@@ -25,15 +26,6 @@ const b64ToBytes = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCode
 
 const broadcast = (job: JobState) => chrome.runtime.sendMessage({ type: 'limenn:job', job }).catch(() => {});
 
-function manualEntities(text: string, manual: EngineRun['manual']): Entity[] {
-  const out: Entity[] = [];
-  for (const [value, type] of manual) {
-    for (let i = text.indexOf(value); i >= 0; i = text.indexOf(value, i + value.length)) {
-      out.push({ start: i, end: i + value.length, text: value, type, source: 'manual', score: 1 });
-    }
-  }
-  return out;
-}
 
 async function readFile(f: JobFile, onProgress?: (frac: number, label: string) => void): Promise<{ text: string; meta: string }> {
   return extract(f.name, b64ToBytes(f.data), onProgress);
@@ -87,7 +79,7 @@ async function run(req: EngineRun): Promise<EngineResult> {
           broadcast(job);
           continue;
         }
-        const r = applyDoc(doc, vault, { allow, manual: req.manual });
+        const r = applyDoc(doc, vault, { allow, rules: req.rules });
         const ms = Math.round(performance.now() - t);
         item.original = doc.text;
         item.meta = doc.meta;
@@ -146,7 +138,7 @@ async function run(req: EngineRun): Promise<EngineResult> {
       ner,
       spanNer,
       allow,
-      manual: manualEntities(item.original, req.manual),
+      manual: customEntities(item.original, req.rules ?? []),
       known,
       onEvent: (e) => {
         applyEvent(item.steps, e);

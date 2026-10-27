@@ -1,14 +1,15 @@
 // Side panel = live monitor. Shows every stage of the latest cleaning job (pushed by the background
 // worker via chrome.storage.session) and lets the user correct detections, which re-cleans the job.
 import type { ModelStatus } from '../engine/model';
-import type { EntityType } from '../pii/types';
+import { sameRule } from '../pii/custom';
 import { composeMessage, protectedCount } from '../shared/compose';
-import { ALLOW_KEY, type ItemView, type JobState, LAST_JOB_KEY, MANUAL_KEY, type StepState } from '../shared/jobs';
+import { ALLOW_KEY, type ItemView, type JobState, LAST_JOB_KEY, PROTECTED_KEY, type StepState } from '../shared/jobs';
 import { logoSvg } from '../shared/logo';
 import { PLACEHOLDER_RE } from '../pii/vault';
 import { type ContentResponse, ENABLED_KEY } from '../shared/messages';
 import { CHAT_URL_PATTERNS, NEW_CHAT_URL, pickAdapter } from '../content/adapters';
-import { clearVault, loadVault } from '../shared/storage';
+import { clearVault, loadProtected, loadVault, saveProtected } from '../shared/storage';
+import { attachProtect } from '../shared/protect-popover';
 import { initDocVault } from './docvault';
 import { RISK_LABEL } from '../pii/guard';
 
@@ -218,42 +219,38 @@ $('original').addEventListener('click', async (e) => {
   const value = (e.target as HTMLElement).dataset.value?.trim();
   if (!value) return;
   const allow = await sessionList<string>(ALLOW_KEY);
-  const manual = (await sessionList<[string, EntityType]>(MANUAL_KEY)).filter(([v]) => v !== value);
-  await chrome.storage.local.set({ [ALLOW_KEY]: [...new Set([...allow, value])], [MANUAL_KEY]: manual });
+  // A word the user protected by hand stops being protected; a shape keeps working for every other value.
+  await saveProtected((await loadProtected()).filter((r) => !sameRule(r, { kind: 'words', value })));
+  await chrome.storage.local.set({ [ALLOW_KEY]: [...new Set([...allow, value])] });
   toast(`“${value}” will be sent unchanged.`);
   renderKept();
   reclean();
 });
 
-document.addEventListener('selectionchange', () => {
-  const sel = document.getSelection();
-  const text = sel?.toString().trim() ?? '';
-  const inside = sel?.anchorNode && $('original').contains(sel.anchorNode);
-  if (inside && text.length >= 2 && text.length <= 120) {
-    $('sel-text').textContent = text;
-    $('selection-bar').hidden = false;
-  } else if (!$('selection-bar').contains(document.activeElement)) {
-    $('selection-bar').hidden = true;
-  }
-});
-
-$('sel-add').addEventListener('click', async () => {
-  const value = $('sel-text').textContent ?? '';
-  if (!value) return;
-  const manual = (await sessionList<[string, EntityType]>(MANUAL_KEY)).filter(([v]) => v !== value);
-  manual.push([value, $<HTMLSelectElement>('sel-type').value as EntityType]);
-  const allow = (await sessionList<string>(ALLOW_KEY)).filter((v) => v !== value);
-  await chrome.storage.local.set({ [MANUAL_KEY]: manual, [ALLOW_KEY]: allow });
-  $('selection-bar').hidden = true;
-  renderKept();
-  reclean();
+// Click any other word (or select a few) to protect it, or everything shaped like it, from now on.
+attachProtect(document.body, {
+  selector: '#original, #clean-out',
+  onAdded: () => {
+    renderKept();
+    reclean();
+    return 'Re-cleaning…';
+  },
+  onRemoved: () => {
+    renderKept();
+    reclean();
+  },
 });
 
 async function renderKept() {
   const allow = await sessionList<string>(ALLOW_KEY);
-  $('kept-box').hidden = !allow.length;
+  const rules = await loadProtected();
+  $('kept-box').hidden = !allow.length && !rules.length;
+  $('kept-allow').hidden = !allow.length;
   $('kept').innerHTML = allow.map((v) => `<button data-undo="${esc(v)}" title="Protect again">${esc(v)} ×</button>`).join('');
+  $('protected-count').textContent = rules.length ? `${rules.length} protected word${rules.length === 1 ? '' : 's'} & pattern${rules.length === 1 ? '' : 's'}` : '';
 }
+$('manage-protected').addEventListener('click', () => chrome.runtime.openOptionsPage());
+chrome.storage.local.onChanged.addListener((c) => (c[PROTECTED_KEY] || c[ALLOW_KEY]) && renderKept());
 $('kept').addEventListener('click', async (e) => {
   const v = (e.target as HTMLElement).dataset.undo;
   if (!v) return;

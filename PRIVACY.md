@@ -16,6 +16,7 @@ limenn ("the extension") removes personal data from what you type or attach on c
 | The session history (what you asked, when, on which site) | Shown in the workspace's *history* panel | `chrome.storage.session`: browser memory only, deleted when the browser closes, or earlier with *clear history now* |
 | The placeholder mapping (e.g. `[PERSON-1]` → the real name) | Used to show real values in the chat site's answers | `chrome.storage.session`, deleted when the browser closes. You can turn on *Remember the placeholder vault* in Settings to keep it in `chrome.storage.local` on your computer. |
 | Settings and your "never redact" list | Used to configure detection | `chrome.storage.local` on your computer |
+| Your protected words and patterns | Always replaced in your text and files | `chrome.storage.local` on your computer. *Export list* in Settings saves them to a file of your choice; that file contains the terms themselves, so keep it private. |
 | Document vault folder (optional) | If you link a folder, the extension reads the documents in it, keeps its prepared results in `.limenn/` and writes cleaned copies to `limenn-prepared/` in that folder | Your local disk, plus a copy of the prepared results in the browser's local storage. Chrome asks for your permission to access the folder. |
 
 The extension makes **no network requests of its own**. Its content security policy (`connect-src 'self'`) blocks all outbound connections from its own pages, and the detection models ship inside the extension package.

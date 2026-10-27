@@ -1,8 +1,9 @@
 main { padding: 4px 14px 28px; display: grid; gap: 12px; }
 
-.top { display: flex; align-items: center; justify-content: space-between; padding: 16px 14px 12px; border-bottom: 1px solid var(--accent); background: var(--card); position: sticky; top: 0; z-index: 5; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 14px 12px; border-bottom: 1px solid var(--accent); background: var(--card); position: sticky; top: 0; z-index: 5; }
 .brand { display: flex; align-items: center; gap: 4px; }
-.brand .tag { margin-left: 8px; padding: 4px 8px; border: 1px solid var(--accent); border-radius: 999px; }
+.brand .tag { margin-left: 8px; padding: 4px 8px; border: 1px solid var(--accent); border-radius: 999px; white-space: nowrap; }
+.top .btn { white-space: nowrap; flex-shrink: 0; }
 .icon { width: 30px; padding: 0; }
 
 .model { position: relative; display: flex; align-items: center; gap: 8px; margin: 10px 14px 4px; font: 400 11px/1 var(--mono); color: var(--muted); letter-spacing: -0.2px; }
@@ -132,9 +133,12 @@ code { font: 11.5px var(--mono); background: var(--accent-soft); color: var(--ac
 
 /* protection on/off */
 .top #open-workspace { margin-left: auto; }
-.top .switch { margin-left: 10px; margin-right: 6px; display: inline-flex; align-items: center; gap: 6px; font: 400 11px/1 var(--mono); color: var(--accent); cursor: pointer; user-select: none; }
+.top .switch { flex-shrink: 0; margin-left: 4px; margin-right: 2px; display: inline-flex; align-items: center; gap: 6px; font: 400 11px/1 var(--mono); color: var(--accent); cursor: pointer; user-select: none; }
 .switch input { appearance: none; width: 30px; height: 17px; border-radius: 99px; background: var(--red); position: relative; margin: 0; cursor: pointer; transition: background 0.15s; }
 .switch input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
 .switch input:checked { background: var(--accent); }
 .switch input:checked::after { transform: translateX(13px); }
 body.off .switch span { color: var(--red); }
+.protected-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+/* Narrow side panel: drop the tagline before anything wraps or touches. */
+@media (max-width: 400px) { .brand .tag { display: none; } }

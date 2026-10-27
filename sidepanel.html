@@ -28,7 +28,7 @@
         <div class="empty-art" id="empty-art"></div>
         <h2>Ask privately</h2>
         <p>Type in the <b>Limenn bar</b> at the top of chatgpt.com, claude.ai or grok.com, or open the <b>workspace</b>. Every step of the cleaning shows up here live — what was found, by which stage, and exactly what the model receives.</p>
-        <div class="row"><button data-open-site="claude" class="btn primary">Open Claude</button><button data-open-site="chatgpt" class="btn">Open ChatGPT</button><button data-open-site="grok" class="btn">Open Grok</button></div>
+        <div class="row"><button data-open-site="claude" class="btn primary" title="Open claude.ai with the Limenn bar">Open Claude</button><button data-open-site="chatgpt" class="btn" title="Open chatgpt.com with the Limenn bar">Open ChatGPT</button><button data-open-site="grok" class="btn" title="Open grok.com with the Limenn bar">Open Grok</button></div>
       </section>
 
       <section id="job" hidden>
@@ -48,12 +48,12 @@
             <span id="answer-state" class="live"></span>
           </div>
           <div class="seg" role="tablist">
-            <button id="ans-restored" aria-selected="true">With your real data</button>
-            <button id="ans-raw" aria-selected="false">As <span class="site-name">the model</span> wrote it</button>
+            <button id="ans-restored" aria-selected="true" title="Show the answer with your real data filled back in">With your real data</button>
+            <button id="ans-raw" aria-selected="false" title="Show the answer exactly as the AI wrote it, with placeholders">As <span class="site-name">the model</span> wrote it</button>
           </div>
           <p id="answer-note" class="note"></p>
           <div id="answer" class="answer-text"></div>
-          <button id="copy-answer-inline" class="btn sm">Copy answer with real values</button>
+          <button id="copy-answer-inline" class="btn sm" title="Copy the answer with your real data to the clipboard">Copy answer with real values</button>
         </div>
 
         <div class="card block">
@@ -63,21 +63,13 @@
           </div>
           <div id="types" class="types"></div>
           <div id="original" class="doc original"></div>
-          <div class="hint">Click a highlight to send it unchanged · select text to protect it</div>
-          <div id="selection-bar" class="selection-bar" hidden>
-            <span>Protect “<b id="sel-text"></b>” as</span>
-            <select id="sel-type">
-              <option>PERSON</option><option>ORG</option><option>LOCATION</option><option>ADDRESS</option>
-              <option>ID_NUMBER</option><option>HEALTH</option><option>FINANCIAL</option><option>DATE</option>
-            </select>
-            <button id="sel-add" class="btn primary sm">Protect</button>
-          </div>
+          <div class="hint">Click a highlight to send it unchanged · click any other word to protect it from now on</div>
         </div>
 
         <div class="card block">
           <div class="block-head">
             <span class="eyebrow">What <span class="site-name">the model</span> receives</span>
-            <button id="copy" class="btn ghost sm">Copy</button>
+            <button id="copy" class="btn ghost sm" title="Copy the cleaned text, exactly what the AI receives">Copy</button>
           </div>
           <pre id="clean-out" class="doc clean"></pre>
         </div>
@@ -85,8 +77,9 @@
         <ul id="warnings" class="warnings"></ul>
 
         <div id="kept-box" class="kept" hidden>
-          <span class="eyebrow">Always sent unchanged</span>
-          <div id="kept"></div>
+          <div id="kept-allow"><span class="eyebrow">Always sent unchanged</span>
+          <div id="kept"></div></div>
+          <div class="protected-row"><span id="protected-count" class="eyebrow"></span><button id="manage-protected" class="btn ghost sm" title="Open Settings to see, edit, export or import your protected words and patterns">manage protected list</button></div>
         </div>
       </section>
 
@@ -104,7 +97,7 @@
         </div>
         <ul id="dv-list" class="dv-list"></ul>
         <div id="dv-review" class="dv-review" hidden>
-          <div class="block-head"><b id="dv-review-name"></b><button id="dv-review-close" class="btn ghost sm">Close</button></div>
+          <div class="block-head"><b id="dv-review-name"></b><button id="dv-review-close" class="btn ghost sm" title="Close the document review">Close</button></div>
           <div id="dv-review-doc" class="doc original"></div>
           <div class="hint">Click a highlight to send it unchanged whenever this document is used · select text to protect it</div>
           <div id="dv-sel" class="selection-bar" hidden>
@@ -113,13 +106,13 @@
               <option>PERSON</option><option>ORG</option><option>LOCATION</option><option>ADDRESS</option>
               <option>ID_NUMBER</option><option>HEALTH</option><option>FINANCIAL</option><option>DATE</option>
             </select>
-            <button id="dv-sel-add" class="btn primary sm">Protect</button>
+            <button id="dv-sel-add" class="btn primary sm" title="Protect the selected text in this document">Protect</button>
           </div>
         </div>
         <div class="row">
-          <button id="dv-link" class="btn sm primary">Link vault folder</button>
-          <button id="dv-scan" class="btn sm" hidden>Rescan</button>
-          <button id="dv-unlink" class="btn ghost sm danger" hidden>Unlink</button>
+          <button id="dv-link" class="btn sm primary" title="Choose a folder whose documents Limenn prepares in advance, on this computer">Link vault folder</button>
+          <button id="dv-scan" class="btn sm" title="Look for new or changed documents in the folder now" hidden>Rescan</button>
+          <button id="dv-unlink" class="btn ghost sm danger" title="Stop using this folder (your files stay where they are)" hidden>Unlink</button>
         </div>
       </section>
 
@@ -128,8 +121,8 @@
           <summary><span class="eyebrow">Placeholder vault</span><span class="vault-count"><span id="map-count">0</span> values · stays in this browser</span></summary>
           <table id="mapping"></table>
           <div class="row">
-            <button id="copy-answer" class="btn sm">Copy last answer (restored)</button>
-            <button id="clear-map" class="btn ghost sm danger">Clear vault</button>
+            <button id="copy-answer" class="btn sm" title="Copy the last answer with your real data filled in">Copy last answer (restored)</button>
+            <button id="clear-map" class="btn ghost sm danger" title="Forget which placeholder stands for which value; older answers then keep their placeholders">Clear vault</button>
           </div>
         </details>
       </section>

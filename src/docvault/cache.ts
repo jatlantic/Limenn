@@ -1,6 +1,7 @@
 // Document Vault: documents in a linked folder are prepared ahead of time (text extraction + regex/BERT/Jev
 // detection) and cached in `<folder>/.limenn/`. Sending one later only assigns placeholders (applyEntities),
 // which takes milliseconds. Shared by the extension (File System Access API) and the desktop app (node:fs).
+import { customEntities, type ProtectedRule, wordsRules } from '../pii/custom';
 import { applyEntities, detect, statsOf, type RedactOptions } from '../pii/pipeline';
 import type { Entity, Settings } from '../pii/types';
 import { Vault } from '../pii/vault';
@@ -226,26 +227,16 @@ export async function loadGazetteer(fs: VaultFs): Promise<KnownValue[]> {
   }
 }
 
-/** Manual review entries of a doc as entities in its text. */
-export function manualEntities(text: string, manual: PreparedDoc['review']['manual']): Entity[] {
-  const out: Entity[] = [];
-  for (const [value, type] of manual) {
-    if (!value) continue;
-    for (let i = text.indexOf(value); i >= 0; i = text.indexOf(value, i + value.length)) {
-      out.push({ start: i, end: i + value.length, text: value, type, source: 'manual', score: 1 });
-    }
-  }
-  return out;
-}
 
 /**
  * The fast path: turn a prepared doc into redacted text for the current conversation.
- * `allow`/`manual` are the session-wide corrections; the doc's own review lists are added on top.
+ * `allow` is the session's "send unchanged" list and `rules` the user's protected words and shapes; the doc's own
+ * review lists are added on top.
  */
-export function applyDoc(doc: PreparedDoc, vault: Vault, session: { allow?: Iterable<string>; manual?: PreparedDoc['review']['manual'] } = {}) {
+export function applyDoc(doc: PreparedDoc, vault: Vault, session: { allow?: Iterable<string>; rules?: readonly Pick<ProtectedRule, 'kind' | 'value' | 'type'>[] } = {}) {
   if (doc.status !== 'ready') throw new Error(doc.error ?? `${doc.name} is not prepared`);
   const allow = [...(session.allow ?? []), ...(doc.allowList ?? []), ...doc.review.allow];
-  const manual = manualEntities(doc.text, [...doc.review.manual, ...(session.manual ?? [])]);
+  const manual = customEntities(doc.text, [...wordsRules(doc.review.manual), ...(session.rules ?? [])]);
   const r = applyEntities(doc.text, doc.entities, vault, { allow, manual });
   return { ...r, stats: statsOf(r.entities, r.propagated, doc.candidates, 0) };
 }

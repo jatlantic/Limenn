@@ -28,6 +28,7 @@ Removes personal data from prompts and files on your device before they reach Ch
 > • Consistent placeholders across your prompt and all attached files
 > • PDF, Word (.docx) and text files are redacted locally before upload
 > • Side panel to review every detection: click to keep a value, select text to protect more
+> • Your own protected list: click a word once to replace it from then on, or protect everything shaped like it (e.g. EMP-#####); stored only in your browser, with export/import
 > • Optional Document Vault: link a folder once and its documents are prepared in advance
 > • Multilingual (English, German, French, Italian and more), with Swiss and EU formats
 >

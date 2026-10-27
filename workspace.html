@@ -12,15 +12,14 @@
     <header class="ws-top">
       <div class="brand"><span class="wordmark">limenn</span><span id="logo"></span><span class="eyebrow tag">workspace</span></div>
       <div class="sites" role="tablist" aria-label="AI assistant">
-        <button data-site="chatgpt" role="tab">ChatGPT</button>
+        <button data-site="chatgpt" role="tab" title="Send your messages through ChatGPT">ChatGPT</button>
         <button data-site="claude" role="tab" title="Needs you to be logged in to claude.ai in this browser">Claude<small>login required</small></button>
         <button data-site="grok" role="tab" title="Needs you to be logged in to grok.com in this browser">Grok<small>login required</small></button>
       </div>
-      <label class="switch" title="Protection on or off (also switches the Limenn bar and the side panel)"><input type="checkbox" id="enabled" checked /><span id="enabled-label">protect on</span></label>
       <div class="ws-actions">
         <button id="open-site" class="btn ghost sm" title="Go to the chat site itself, with the Limenn bar open">open ChatGPT with limenn ↗</button>
-        <button id="history-btn" class="btn sm" aria-expanded="false" aria-controls="history">history</button>
-        <button id="new-chat" class="btn sm">new chat</button>
+        <button id="history-btn" class="btn sm" aria-expanded="false" aria-controls="history" title="Everything asked in this browser session (deleted when the browser closes)">history</button>
+        <button id="new-chat" class="btn sm" title="Start a new conversation (the current one moves to history)">new chat</button>
       </div>
     </header>
 
@@ -45,7 +44,8 @@
           <button id="vault" class="btn ghost sm" title="Prepared documents from your vault folder">vault</button>
           <span class="off-badge mono" id="off-badge" hidden>protection off · sent unchanged</span>
           <span class="hint mono" id="hint">⌘↵ to send</span>
-          <button id="send" class="btn primary">send ↗</button>
+          <label class="switch" title="Protection on or off (also switches the Limenn bar and the side panel)"><input type="checkbox" id="enabled" checked /><span id="enabled-label">protect on</span></label>
+          <button id="send" class="btn primary" title="Clean your message on this computer, then send it (⌘↵)">send ↗</button>
         </div>
       </div>
       <p class="ws-fine mono">limenn catches most, not all, personal data · check “what the AI saw” for sensitive cases · not affiliated with OpenAI, Anthropic or xAI</p>
@@ -54,11 +54,11 @@
     <aside id="history" class="history" hidden aria-label="History of this session">
       <div class="history-head">
         <h2>history</h2>
-        <button id="history-close" class="btn ghost sm" aria-label="Close">close</button>
+        <button id="history-close" class="btn ghost sm" aria-label="Close" title="Close the history">close</button>
       </div>
       <p class="mono note">everything asked in this browser session, in the workspace and in the Limenn bar. it lives only in this browser's memory and is deleted when the browser closes.</p>
       <ol id="history-list" class="history-list"></ol>
-      <button id="history-clear" class="btn ghost sm danger">clear history now</button>
+      <button id="history-clear" class="btn ghost sm danger" title="Delete the history of this session now">clear history now</button>
     </aside>
 
     <div id="toast" class="toast" hidden></div>

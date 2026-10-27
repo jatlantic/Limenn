@@ -143,6 +143,14 @@ function watchAnswer(jobId: string, resume?: { before: number; t0: number }) {
   let lastDone = false;
   let timer: number | undefined;
   let finished = false;
+  let fallback = { text: '', since: Date.now() };
+  let lastBeat = 0;
+  /** Tells the workspace why nothing is showing (it shows this after a while), and whether this tab is hidden. */
+  const heartbeat = (messages: number, chars: number, why: string) => {
+    if (Date.now() - lastBeat < 4000) return;
+    lastBeat = Date.now();
+    chrome.runtime.sendMessage({ type: 'limenn:answer-status', jobId, why, messages, before, chars, hidden: document.hidden }).catch(() => {});
+  };
   const finish = () => {
     finished = true;
     obs.disconnect();
@@ -154,7 +162,7 @@ function watchAnswer(jobId: string, resume?: { before: number; t0: number }) {
   };
   const report = async () => {
     // The vault may still be loading right after a page reload; without it the placeholders could not be mapped back.
-    await vaultReady;
+    await vaultReady.catch(() => {});
     if (finished) return;
     if (Date.now() - started > WATCH_MS) {
       // Give up, but don't leave the workspace on "writing…" forever.
@@ -162,11 +170,19 @@ function watchAnswer(jobId: string, resume?: { before: number; t0: number }) {
       return finish();
     }
     const msgs = qAll(SELECTORS.assistantMessage);
-    if (msgs.length <= before) return;
+    if (msgs.length <= before) return heartbeat(msgs.length, 0, 'no answer bubble yet');
     const el = msgs[msgs.length - 1] as HTMLElement;
-    const rawText = unrestoreString(answerText(el));
+    let body = answerText(el);
+    if (!body && !site.isStreaming(el)) {
+      // The site's markup may have changed so the answer body is not recognised: once the message has stopped
+      // changing, fall back to all of its text rather than showing nothing.
+      const all = el.innerText.trim();
+      if (all !== fallback.text) fallback = { text: all, since: Date.now() };
+      if (all && Date.now() - fallback.since >= 3000) body = all;
+    }
+    const rawText = unrestoreString(body);
     const text = restoreString(rawText);
-    if (!text) return;
+    if (!text) return heartbeat(msgs.length, el.innerText.length, 'answer bubble found, no text yet');
     if (text !== last) lastChange = Date.now();
     // A site's "still writing" signal can be missed (Grok has no stable one), which used to end the watch after the
     // first chunk. So an answer only counts as complete once it has also stopped changing for a moment.
@@ -355,16 +371,22 @@ const observer = new MutationObserver((mutations) => {
 
 let vaultReady: Promise<void> = Promise.resolve();
 async function loadVault() {
-  const s = await chrome.storage.session.get(VAULT_KEY).catch(() => ({}) as Record<string, unknown>);
-  const l = await chrome.storage.local.get(VAULT_KEY);
-  vault = ((s as Record<string, unknown>)[VAULT_KEY] ?? l[VAULT_KEY] ?? null) as VaultData | null;
+  // Firefox does not expose storage.session to content scripts at all, so even reaching for it can throw.
+  const s = await Promise.resolve()
+    .then(() => chrome.storage.session.get(VAULT_KEY))
+    .catch(() => ({}) as Record<string, unknown>);
+  const l = await chrome.storage.local.get(VAULT_KEY).catch(() => ({}) as Record<string, unknown>);
+  let stored = ((s as Record<string, unknown>)[VAULT_KEY] ?? l[VAULT_KEY] ?? null) as VaultData | null;
+  // Firefox keeps storage.session away from content scripts: the background page hands over the session vault.
+  if (!stored) stored = (await chrome.runtime.sendMessage({ type: 'limenn:vault:get' }).catch(() => undefined))?.vault ?? null;
+  vault = stored;
   if (vault) restoreTree(document.body);
 }
 
 chrome.storage.onChanged.addListener((changes) => {
   if (changes[VAULT_KEY]) loadVault();
 });
-vaultReady = loadVault();
+vaultReady = loadVault().catch(() => {});
 observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
 // ---------- Limenn bar + messaging ----------
@@ -386,6 +408,10 @@ chrome.runtime.onMessage.addListener((msg: ContentRequest | { type: 'limenn:job'
   if (sender.id !== chrome.runtime.id) return false;
   if (msg.type === 'limenn:job') {
     overlay?.onJob(msg.job);
+    return false;
+  }
+  if ((msg as { type: string }).type === 'limenn:vault-changed') {
+    vaultReady = loadVault().catch(() => {});
     return false;
   }
   if (msg.type === 'limenn:raw') {

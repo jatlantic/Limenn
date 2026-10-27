@@ -1,4 +1,4 @@
-# Push a tag like v1.0.0 → builds, runs the release checks and attaches the zip to a draft GitHub Release.
+# Push a tag like v1.0.0 → builds, runs the release checks and attaches the Chrome and Firefox zips to a draft GitHub Release.
 # Needs the repository variable LIMENN_WEB_MODEL_URL (where gliner-web-q8.onnx can be downloaded); its hash is
 # checked against models/models.lock.json, so a wrong or tampered file fails the build.
 name: Release
@@ -24,6 +24,9 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run release
+        env:
+          LIMENN_WEB_MODEL_URL: ${{ vars.LIMENN_WEB_MODEL_URL }}
+      - run: npm run release:firefox
         env:
           LIMENN_WEB_MODEL_URL: ${{ vars.LIMENN_WEB_MODEL_URL }}
       - name: Check tag matches manifest version

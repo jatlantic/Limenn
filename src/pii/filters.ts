@@ -99,3 +99,28 @@ export function passesProperNounGate(e: Entity, text: string): boolean {
   }
   return true;
 }
+
+/** First names that are also everyday lowercase words ("please mark the date", "max 5 items", "bis august"). */
+const COMMON_WORD_NAMES = new Set(
+  (
+    'mark will bill grace rose may june april august joy hope faith summer art pat sue rob jack frank chase hunter max ' +
+    'ben don dean drew gene guy herb jean jay lee les miles ray rich rusty sandy sky storm victor wade warren ' +
+    'amber angel autumn crystal dawn destiny ginger holly iris ivy jade jasmine lily olive pearl ruby violet ' +
+    'liebe hoffnung sonne rosa mai juni juli august linde engel ernst frank frei friedrich ' +
+    'claire rené pierre ' +
+    'chiara sole mare luce rosa'
+  ).split(' '),
+);
+/**
+ * Keep a PERSON found by the lowercase pass (see pipeline.ts)? "hans meier" (first + last name) is convincing on its
+ * own; a single lowercase word ("anna", but also "date" in "mark the date") needs a near-certain score, the usual
+ * chat-context check and must not be an everyday word.
+ */
+export function passesLowercaseNameGate(e: Entity, text: string): boolean {
+  const v = norm(e.text);
+  if (isRoleOrPronoun(v)) return false;
+  const words = v.toLowerCase().split(/\s+/).map((w) => w.replace(/[.,;:!?'’]/g, ''));
+  if (words.some((w) => FUNCTION_WORDS.has(w))) return false;
+  if (words.length >= 2) return e.score >= 0.95;
+  return e.score >= 0.99 && !COMMON_WORD_NAMES.has(words[0]) && passesProperNounGate(e, text);
+}
