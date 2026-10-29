@@ -2,7 +2,7 @@
   "name": "limenn",
   "homepage": "https://limenn.io",
   "repository": "github:jatlantic/Limenn",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "description": "Chrome and Firefox extension that removes personal data from prompts and files on your device before they reach ChatGPT, Claude or Grok, and restores it in the answers.",
