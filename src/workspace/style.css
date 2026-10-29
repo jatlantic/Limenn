@@ -94,3 +94,19 @@ body.off #send { background: var(--red); border-color: var(--red); }
 
 .ai-actions { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 .ws-fine { margin: 8px auto 0; font-size: 10.5px; color: var(--faint); text-align: center; }
+
+/* held back by the leak guard */
+.muted { color: var(--muted); }
+.review { margin: 8px 0 4px; padding: 12px 14px; border: 1px solid var(--red); display: grid; gap: 12px; font: 400 12px/1.5 var(--mono); }
+.review-name { font-weight: 600; color: var(--ink, inherit); margin-bottom: 4px; }
+.review ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.review li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.review li.done { opacity: 0.6; }
+.risk-label { padding: 1px 6px; border: 1px solid var(--red); color: var(--red); font-size: 11px; white-space: nowrap; }
+.review .ctx { color: var(--muted); overflow-wrap: anywhere; }
+.review mark { background: rgba(232, 28, 57, 0.14); color: inherit; padding: 0 2px; }
+.review .ok { color: var(--accent); }
+.review button.link { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.review details summary { cursor: pointer; color: var(--accent); margin-top: 6px; }
+.review pre.clean { margin-top: 6px; max-height: 260px; overflow: auto; white-space: pre-wrap; }
+.review-actions { display: flex; gap: 8px; flex-wrap: wrap; }

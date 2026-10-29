@@ -146,7 +146,7 @@ async function runJob(job: JobState, input: JobInput, displayPrompt = input.prom
   const settings = await loadSettings();
   // Review corrections persist across restarts (chrome.storage.local).
   const session = await chrome.storage.local.get(ALLOW_KEY);
-  await chrome.storage.session.set({ [LAST_INPUT_KEY]: { input, tabId: job.tabId, source: job.source, autoSend: job.autoSend, title: job.title } });
+  await chrome.storage.session.set({ [LAST_INPUT_KEY]: { input, jobId: job.id, tabId: job.tabId, source: job.source, autoSend: job.autoSend, title: job.title } });
   await ensureEngine();
   publish(job);
   const res: EngineResult = await chrome.runtime.sendMessage({
@@ -176,13 +176,14 @@ const titleOf = (input: JobInput) =>
   (input.prompt.trim().split('\n')[0] || input.files.map((f) => f.name).join(', ') || 'Untitled').slice(0, 80);
 
 /** What the Limenn bar (content script on the chat site) may ask for; everything else is for extension pages only. */
-const CONTENT_MESSAGES = new Set(['limenn:clean', 'limenn:status', 'limenn:answer', 'limenn:answer-status', 'limenn:warm', 'limenn:open-panel', 'limenn:workspace:open', 'limenn:vault:get']);
+const CONTENT_MESSAGES = new Set(['limenn:clean', 'limenn:status', 'limenn:answer', 'limenn:answer-status', 'limenn:wake', 'limenn:warm', 'limenn:open-panel', 'limenn:workspace:open', 'limenn:vault:get']);
 const ENGINE_URL = chrome.runtime.getURL('engine.html');
 const WORKSPACE_URL = chrome.runtime.getURL('workspace.html');
 
 // ---------- workspace: Limenn's own tab, with ChatGPT / Claude working in a background tab ----------
 
 const woken = new Set<string>();
+const lastWake = new Map<number, number>();
 async function wakeTab(tabId: number, windowId: number) {
   const [prev] = await chrome.tabs.query({ active: true, windowId }).catch(() => []);
   await chrome.tabs.update(tabId, { active: true }).catch(() => {});
@@ -229,7 +230,15 @@ async function workspaceTab(site: SiteAdapter['id'], newChat: boolean, windowId?
   return tab.id!;
 }
 
-async function workspaceSend(msg: { input: JobInput; site: SiteAdapter['id']; newChat?: boolean; jobId: string; displayPrompt?: string; unprotected?: boolean }, windowId?: number): Promise<JobState> {
+/** Held-back messages: clean again with the stored input (after the user protected more) or send it as it is. */
+async function storedInput(jobId: string): Promise<JobInput> {
+  const last = (await chrome.storage.session.get(LAST_INPUT_KEY))[LAST_INPUT_KEY] as { input: JobInput; jobId?: string } | undefined;
+  if (!last || last.jobId !== jobId) throw new Error('This message is no longer available. Please send it again.');
+  return last.input;
+}
+
+async function workspaceSend(msg: { input?: JobInput; reuseInput?: boolean; skipGuard?: boolean; site: SiteAdapter['id']; newChat?: boolean; jobId: string; displayPrompt?: string; unprotected?: boolean }, windowId?: number): Promise<JobState> {
+  const input = msg.reuseInput ? await storedInput(msg.jobId) : msg.input!;
   const tabId = await workspaceTab(msg.site, !!msg.newChat, windowId);
   const job: JobState = {
     id: msg.jobId,
@@ -238,15 +247,15 @@ async function workspaceSend(msg: { input: JobInput; site: SiteAdapter['id']; ne
     autoSend: true,
     createdAt: Date.now(),
     status: 'running',
-    title: titleOf(msg.input),
+    title: titleOf(input),
     site: ADAPTERS.find((a) => a.id === msg.site)?.label,
     items: [],
     unprotected: !!msg.unprotected,
   };
-  const cleaned = await runJob(job, msg.input, msg.displayPrompt);
+  const cleaned = await runJob(job, input, msg.displayPrompt);
   if (cleaned.status === 'error') return cleaned;
   // Leak guard: never send automatically when something risky is still in the cleaned text.
-  if (!cleaned.unprotected && cleaned.items.some((i) => i.risks?.some((r) => r.severity === 'high'))) return { ...cleaned, status: 'cleaned' };
+  if (!msg.skipGuard && !cleaned.unprotected && cleaned.items.some((i) => i.risks?.some((r) => r.severity === 'high'))) return { ...cleaned, status: 'cleaned' };
   const urlBefore = (await chrome.tabs.get(tabId).catch(() => undefined))?.url;
   let r = await chrome.tabs.sendMessage(tabId, { type: 'limenn:deliver', job: cleaned }).catch((e: Error) => ({ ok: false, error: e.message }));
   // Grok reloads the page once a new chat gets its own URL, which closes this message channel mid-delivery. If the
@@ -257,7 +266,7 @@ async function workspaceSend(msg: { input: JobInput; site: SiteAdapter['id']; ne
   }
   const done: JobState = r?.ok ? { ...cleaned, status: 'sent' } : { ...cleaned, status: 'error', error: r?.error ?? 'Could not send' };
   publish(done);
-  await recordHistory(done, msg.displayPrompt ?? msg.input.prompt, [...msg.input.files.map((f) => f.name), ...(msg.input.vaultDocs ?? []).map((d) => d.name)]).catch(() => {});
+  await recordHistory(done, msg.displayPrompt ?? input.prompt, [...input.files.map((f) => f.name), ...(input.vaultDocs ?? []).map((d) => d.name)]).catch(() => {});
   return done;
 }
 
@@ -420,6 +429,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       // forward for a moment, then go back to where the user was.
       if (msg.hidden && sender.tab?.id != null && !woken.has(msg.jobId)) {
         woken.add(msg.jobId);
+        wakeTab(sender.tab.id, sender.tab.windowId);
+      }
+      return false;
+
+    case 'limenn:wake':
+      // The chat tab is waiting for something a hidden tab does not do (an upload finishing): show it briefly, once a minute at most.
+      if (sender.tab?.id != null && Date.now() - (lastWake.get(sender.tab.id) ?? 0) > 60_000) {
+        lastWake.set(sender.tab.id, Date.now());
         wakeTab(sender.tab.id, sender.tab.windowId);
       }
       return false;

@@ -106,12 +106,20 @@ async function attachFiles(files: File[]) {
   });
 }
 
-async function pressSend() {
+async function pressSend(timeout = 60000) {
+  const t0 = Date.now();
+  let asked = false;
   const btn = await waitFor(() => {
     const b = q<HTMLButtonElement>(SELECTORS.sendButton);
-    return b && !b.disabled && b.getAttribute('aria-disabled') !== 'true' ? b : null;
-  }, 60000).catch(() => {
-    throw new Error('Send button not available (upload still running?)');
+    if (b && !b.disabled && b.getAttribute('aria-disabled') !== 'true') return b;
+    // An upload only finishes while the tab is shown: ask the background to bring it forward for a moment.
+    if (!asked && document.hidden && Date.now() - t0 > 12000) {
+      asked = true;
+      chrome.runtime.sendMessage({ type: 'limenn:wake' }).catch(() => {});
+    }
+    return null;
+  }, timeout).catch(() => {
+    throw Object.assign(new Error('The send button stayed disabled (the upload may not have finished).'), { name: 'SendUnavailable' });
   });
   await wait(250);
   btn.click();
@@ -220,8 +228,10 @@ async function deliver(job: JobState, send: boolean) {
   clearComposer(composer);
   await clearAttachments();
   let message = text;
+  let attached = false;
   try {
     await attachFiles(files.map((f) => new File([f.content], f.name, { type: f.mime })));
+    attached = files.length > 0;
   } catch {
     // Uploads need an account on some sites (ChatGPT logged out): put the cleaned documents into the message instead.
     await clearAttachments();
@@ -231,7 +241,16 @@ async function deliver(job: JobState, send: boolean) {
   if (send) {
     // Count answers before sending: some sites (Grok) show the new answer's bubble right away.
     const before = qAll(SELECTORS.assistantMessage).length;
-    await pressSend();
+    try {
+      await pressSend(attached ? 30000 : 60000);
+    } catch (e) {
+      // The upload never completed: send the cleaned documents inside the message instead of giving up.
+      if (!attached || (e as Error).name !== 'SendUnavailable') throw e;
+      await clearAttachments();
+      clearComposer(composer);
+      insertText(composer, composeMessage(job, { inline: true }).text);
+      await pressSend(60000);
+    }
     watchAnswer(job.id, { before, t0: Date.now() });
   }
 }

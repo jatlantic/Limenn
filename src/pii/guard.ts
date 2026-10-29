@@ -65,3 +65,15 @@ export const RISK_LABEL: Record<Risk['reason'], string> = {
   health: 'health information',
   'name-intro': 'possible name in lowercase',
 };
+
+/** A flagged span with a little text around it, so it can be shown in context ("…paid to <hit> on 3 May…"). */
+export function riskContext(clean: string, risk: Pick<Risk, 'start' | 'end'>, radius = 40): { before: string; hit: string; after: string } {
+  const flat = (s: string) => s.replace(/\s+/g, ' ');
+  const from = Math.max(0, risk.start - radius);
+  const to = Math.min(clean.length, risk.end + radius);
+  return {
+    before: (from > 0 ? '…' : '') + flat(clean.slice(from, risk.start)),
+    hit: flat(clean.slice(risk.start, risk.end)).slice(0, 160),
+    after: flat(clean.slice(risk.end, to)) + (to < clean.length ? '…' : ''),
+  };
+}

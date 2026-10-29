@@ -9,9 +9,11 @@ import type { OutgoingFile } from './messages';
  */
 export function composeMessage(job: JobState, opts: { inline?: boolean } = {}): { text: string; files: OutgoingFile[] } {
   const prompt = job.items.find((i) => i.kind === 'prompt');
+  // A file name often is the person's name ("Lohnausweis_Muster Hans.pdf") and never goes through the detectors, so
+  // protected documents leave under a neutral name; the real names stay in the workspace on this computer.
   const files = job.items
     .filter((i) => i.kind === 'file' && i.clean)
-    .map((i) => ({ name: i.name.replace(/\.[^.]+$/, '') + (job.unprotected ? '.txt' : '.redacted.txt'), content: i.clean, mime: 'text/plain' }));
+    .map((i, n) => ({ name: job.unprotected ? i.name.replace(/\.[^.]+$/, '') + '.txt' : `document-${n + 1}.redacted.txt`, content: i.clean, mime: 'text/plain' }));
   // Without protection there are no placeholders to explain.
   const preamble = job.unprotected ? '' : `${PREAMBLE}\n\n`;
   if (opts.inline && files.length) {

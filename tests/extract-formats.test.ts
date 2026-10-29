@@ -50,13 +50,13 @@ describe('composeMessage', () => {
   ] } as unknown as JobState;
   it('attaches cleaned documents as files by default', () => {
     const m = composeMessage(job);
-    expect(m.files.map((f) => f.name)).toEqual(['brief.redacted.txt']);
+    expect(m.files.map((f) => f.name)).toEqual(['document-1.redacted.txt']);
     expect(m.text).not.toContain('[PERSON-1]');
   });
   it('writes them into the message when uploads are refused', () => {
     const m = composeMessage(job, { inline: true });
     expect(m.files).toEqual([]);
-    expect(m.text).toContain('<document name="brief">\nSehr geehrte [PERSON-1]\n</document>');
+    expect(m.text).toContain('<document name="document-1">\nSehr geehrte [PERSON-1]\n</document>');
   });
 });
 

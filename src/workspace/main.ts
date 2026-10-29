@@ -6,10 +6,11 @@ import type { SiteAdapter } from '../content/adapters';
 import { DOCVAULT_KEY, type DocVaultState, emptyDocVault, HISTORY_KEY, type HistoryEntry, type JobFile, type JobState } from '../shared/jobs';
 import { logoSvg } from '../shared/logo';
 import { ENABLED_KEY } from '../shared/messages';
-import { loadVault } from '../shared/storage';
+import { addProtected, loadVault } from '../shared/storage';
 import { PLACEHOLDER_RE, placeholderId } from '../pii/vault';
 import { SUPPORTED_EXT } from '../docvault/types';
-import { customEntities } from '../pii/custom';
+import { customEntities, guessType, makeRule } from '../pii/custom';
+import { RISK_LABEL, riskContext } from '../pii/guard';
 import { attachProtect } from '../shared/protect-popover';
 
 type Site = SiteAdapter['id'];
@@ -25,12 +26,21 @@ interface Turn {
   protectedCount?: number;
   /** Sent with protection switched off. */
   unprotected?: boolean;
+  /** The message went out with earlier turns as context in front of it (so the shown text starts after '---'). */
+  hadContext?: boolean;
+  /** Held back by the leak guard: what still looks personal, per document, for the user to decide on. */
+  review?: ReviewItem[];
   answer?: string;
   raw?: string;
   /** Last note from the chat tab about why no answer text is there yet. */
   diag?: { why: string; messages: number; hidden: boolean; at: number };
   done?: boolean;
   error?: string;
+}
+interface ReviewItem {
+  name: string;
+  clean: string;
+  risks: { text: string; label: string; before: string; after: string; protected?: boolean }[];
 }
 interface Thread {
   id: string;
@@ -96,6 +106,20 @@ async function answerHtml(turn: Turn): Promise<string> {
   return html + esc(turn.raw.slice(pos));
 }
 
+const reviewCount = (t: Turn) => (t.review ?? []).reduce((a, i) => a + i.risks.length, 0);
+
+/** What the leak guard held back: each flagged spot in context, the cleaned text to click words in, and the choices. */
+function reviewHtml(t: Turn): string {
+  const items = (t.review ?? [])
+    .map(
+      (it, n) => `<div class="review-item"><div class="review-name">${esc(it.name || 'message')}</div>
+        <ul>${it.risks.map((r, k) => `<li class="${r.protected ? 'done' : ''}"><span class="risk-label">${esc(r.label)}</span> <span class="ctx">${esc(r.before)}<mark>${esc(r.text)}</mark>${esc(r.after)}</span> ${r.protected ? '<span class="ok">will be replaced</span>' : `<button class="link" data-protect-risk="${t.id}:${n}:${k}" title="Replace this with a placeholder from now on">protect</button>`}</li>`).join('')}</ul>
+        <details><summary>show the cleaned text · click a word in it to protect it</summary><pre class="clean" data-clean="${t.id}-${n}">${esc(it.clean)}</pre></details></div>`,
+    )
+    .join('');
+  return `<div class="review">${items}<div class="review-actions"><button class="btn sm primary" data-review="resend" data-turn="${t.id}" title="Clean again with your new choices and send if nothing is flagged any more">clean again &amp; send</button><button class="btn sm" data-review="force" data-turn="${t.id}" title="Send the cleaned text as it is">send anyway</button><button class="btn ghost sm" data-review="dismiss" data-turn="${t.id}" title="Do not send this">don't send</button></div></div>`;
+}
+
 async function render() {
   document.querySelectorAll<HTMLButtonElement>('.sites button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.site === thread.site)));
   $<HTMLTextAreaElement>('prompt').placeholder = `Ask ${LABEL[thread.site]} privately…`;
@@ -110,7 +134,7 @@ async function render() {
           : t.status === 'running'
             ? `<div class="status"><span class="dot"></span>${esc(t.step ?? 'cleaning on this device…')}</div>`
             : t.status === 'cleaned'
-              ? `<div class="status error"><span class="dot"></span>not sent: something that looks personal is still in the cleaned text. <button data-show-clean="${t.id}" title="Show the cleaned text and what still looks personal">check it</button></div>`
+              ? `<div class="status error"><span class="dot"></span>held back: ${reviewCount(t)} thing${reviewCount(t) === 1 ? '' : 's'} in the cleaned text still look${reviewCount(t) === 1 ? 's' : ''} personal. Nothing was sent.</div>${reviewHtml(t)}`
               : t.unprotected
                 ? `<div class="status unprotected"><span class="dot"></span>protection off · sent to ${LABEL[t.site]} unchanged</div>`
                 : `<div class="status done"><span class="dot"></span>${t.protectedCount ?? 0} values protected · sent to ${LABEL[t.site]} <button data-show-clean="${t.id}" title="Show exactly what was sent, with placeholders">what ${LABEL[t.site]} saw</button></div>`;
@@ -121,7 +145,7 @@ async function render() {
             ? `<div class="msg ai"><div class="who"><b>${LABEL[t.site]}</b>· waiting for the answer…</div>${t.diag && Date.now() - t.diag.at < 20000 ? `<div class="text" style="opacity:.7;font-size:12px">${esc(t.diag.why)}${t.diag.hidden ? ' (the chat tab is in the background)' : ''}. <button data-show-chat="${t.site}">show the ${LABEL[t.site]} tab</button></div>` : ''}</div>`
             : '';
       return `<article class="turn" data-id="${t.id}">
-        <div class="msg you"><div class="who">you</div><div class="text" title="Click a word to protect it from now on">${esc(t.prompt)}</div>${t.files.length ? `<div class="files">${t.files.map((f) => `<span>${esc(f)}</span>`).join('')}</div>` : ''}</div>
+        <div class="msg you"><div class="who">you</div><div class="text" title="Click a word to protect it from now on">${t.prompt ? esc(t.prompt) : '<span class="muted">(no message, document only)</span>'}</div>${t.files.length ? `<div class="files">${t.files.map((f) => `<span>${esc(f)}</span>`).join('')}</div>` : ''}</div>
         ${status}
         <pre class="clean" data-clean="${t.id}" title="Click a word that should not have been sent to protect it from now on" hidden>${esc(t.clean ?? '')}</pre>
         ${ai}
@@ -197,18 +221,67 @@ async function send() {
       input: { prompt: context + prompt, files: jf, vaultDocs: sending.picked },
     });
     if (!res?.ok) throw new Error(res?.error ?? 'Could not send');
-    const job: JobState = res.job;
-    const p = job.items.find((i) => i.kind === 'prompt');
-    // Show only the new message, not the context block sent along with it.
-    turn.clean = p ? (context ? p.clean.slice(p.clean.indexOf('---\n\n') + 5) : p.clean) : '';
-    turn.protectedCount = job.items.reduce((a, i) => a + i.entities.length, 0);
-    turn.status = job.status === 'sent' ? 'sent' : job.status === 'error' ? 'error' : 'cleaned';
-    turn.error = job.error;
-    if (turn.status === 'sent') {
-      // This chat has now seen everything so far (the earlier turns went along as context).
-      thread.seenBy[site] = thread.turns.map((t) => t.id);
-      thread.newChat[site] = false;
-    }
+    applyResult(turn, res.job, !!context);
+  } catch (e) {
+    turn.status = 'error';
+    turn.error = (e as Error).message;
+  } finally {
+    busy = false;
+    $<HTMLButtonElement>('send').disabled = false;
+    save();
+    await render();
+    scrollDown();
+  }
+}
+
+/** Take over what the background reports about a message: cleaned text, whether it went out, or what held it back. */
+function applyResult(turn: Turn, job: JobState, hadContext: boolean) {
+  const p = job.items.find((i) => i.kind === 'prompt');
+  turn.hadContext = hadContext;
+  // Show only the new message, not the context block sent along with it.
+  turn.clean = p ? (hadContext ? p.clean.slice(p.clean.indexOf('---\n\n') + 5) : p.clean) : '';
+  turn.protectedCount = job.items.reduce((a, i) => a + i.entities.length, 0);
+  turn.status = job.status === 'sent' ? 'sent' : job.status === 'error' ? 'error' : 'cleaned';
+  turn.error = job.error;
+  turn.review = undefined;
+  if (turn.status === 'cleaned') {
+    turn.review = job.items
+      .filter((i) => i.risks?.some((r) => r.severity === 'high'))
+      .map((i) => ({
+        name: i.kind === 'prompt' ? '' : i.name,
+        clean: i.clean,
+        risks: i.risks!.filter((r) => r.severity === 'high').map((r) => ({ text: r.text, label: RISK_LABEL[r.reason], ...(({ before, after }) => ({ before, after }))(riskContext(i.clean, r)) })),
+      }));
+  }
+  if (turn.status === 'sent') {
+    // This chat has now seen everything so far (the earlier turns went along as context).
+    thread.seenBy[turn.site] = thread.turns.map((t) => t.id);
+    thread.newChat[turn.site] = false;
+  }
+}
+
+/** Held-back message: clean it again with the user's new protected words, or send the cleaned text as it is. */
+async function resend(turn: Turn, force: boolean) {
+  if (busy) return;
+  busy = true;
+  $<HTMLButtonElement>('send').disabled = true;
+  turn.status = 'running';
+  turn.step = force ? 'sending…' : 'cleaning on this device…';
+  turn.error = undefined;
+  await render();
+  try {
+    const res = await chrome.runtime.sendMessage({
+      type: 'limenn:workspace:send',
+      jobId: turn.id,
+      site: turn.site,
+      newChat: !!thread.newChat[turn.site],
+      displayPrompt: turn.prompt,
+      unprotected: turn.unprotected,
+      reuseInput: true,
+      skipGuard: force,
+    });
+    if (!res?.ok) throw new Error(res?.error ?? 'Could not send');
+    applyResult(turn, res.job, !!turn.hadContext);
   } catch (e) {
     turn.status = 'error';
     turn.error = (e as Error).message;
@@ -386,6 +459,7 @@ attachProtect($('thread'), {
   selector: '.msg.you .text, pre.clean',
   onAdded: (rule, target) => {
     const turn = thread.turns.find((t) => t.id === target.closest<HTMLElement>('.turn')?.dataset.id);
+    if (turn?.status === 'cleaned') return 'Saved. It applies when you press “clean again & send”.';
     const sent = turn?.clean != null && customEntities(turn.clean, [rule]).length > 0;
     return sent ? 'This message already went out with it; it is replaced from your next message on.' : 'Applies to every message and file from now on.';
   },
@@ -411,6 +485,25 @@ $('thread').addEventListener('click', async (e) => {
     el.textContent = 'copied ✓';
     setTimeout(() => (el.textContent = label), 1600);
     return;
+  }
+  if (el.dataset.protectRisk) {
+    const [tid, n, k] = el.dataset.protectRisk.split(':');
+    const risk = thread.turns.find((t) => t.id === tid)?.review?.[+n]?.risks[+k];
+    if (!risk) return;
+    await addProtected(makeRule('words', risk.text, guessType(risk.text)));
+    risk.protected = true;
+    save();
+    return void render();
+  }
+  if (el.dataset.review) {
+    const turn = thread.turns.find((t) => t.id === el.dataset.turn);
+    if (!turn) return;
+    if (el.dataset.review === 'dismiss') {
+      Object.assign(turn, { status: 'error', error: 'Not sent: you chose not to send it.', review: undefined });
+      save();
+      return void render();
+    }
+    return void resend(turn, el.dataset.review === 'force');
   }
   const id = el.dataset.showClean;
   if (!id) return;
