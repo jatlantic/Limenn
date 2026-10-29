@@ -4,7 +4,7 @@ import { constants, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSy
 import { dirname, resolve } from 'node:path';
 import lock from '../models/models.lock.json' with { type: 'json' };
 import { CACHE, fetchModels } from './fetch-models.mjs';
-import { DIST, TARGET, firefoxManifest } from './target.mjs';
+import { DIST, TARGET, firefoxManifest, shipped } from './target.mjs';
 
 await build({
   entryPoints: { content: 'src/content/main.ts', background: 'src/background.ts' },
@@ -22,13 +22,13 @@ console.log('built content.js, background.js');
 // Every model the extension uses is bundled (models/models.lock.json): the extension never downloads anything.
 // fetchModels() downloads missing files into .cache/models and verifies each file's sha256 before it is copied.
 await fetchModels();
-for (const f of lock.files) {
+for (const f of shipped(lock.files)) {
   if (f.optional && !existsSync(resolve(CACHE, f.path))) continue;
   const out = `${DIST}/models/${f.dest ?? f.path}`;
   mkdirSync(dirname(out), { recursive: true });
   copyFileSync(resolve(CACHE, f.path), out, constants.COPYFILE_FICLONE);
 }
-console.log(`bundled ${lock.files.length} model files into ${DIST}/models`);
+console.log(`bundled ${shipped(lock.files).length} model files into ${DIST}/models`);
 
 // On-device OCR (tesseract.js): the worker script and the full SIMD WebAssembly core (the trimmed "-lstm" cores
 // lack the float kernels the tessdata_best models need), loaded from the extension package.

@@ -1,13 +1,15 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
+import { DIST, TARGET } from './scripts/target.mjs';
+
 // Extension pages (side panel, options, offscreen engine). background.js + content.js are built by scripts/build-content.mjs.
-const firefox = process.env.LIMENN_TARGET === 'firefox';
+const firefox = TARGET === 'firefox';
 
 export default defineConfig({
   base: './',
   build: {
-    outDir: firefox ? 'dist-firefox' : 'dist',
+    outDir: DIST,
     emptyOutDir: true,
     target: firefox ? 'firefox128' : 'chrome120',
     chunkSizeWarningLimit: 4000,

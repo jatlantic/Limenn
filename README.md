@@ -20,16 +20,18 @@ You read:      Dear Maria Keller, … your settlement of CHF 48,000 …        �
 
 ## Install in 1 minute
 
-1. **Download** the zip for your browser from [Releases](../../releases/latest) and unzip it:
-   - **Chrome, Edge, Brave, Arc** (Chromium 120+): `limenn-<version>.zip`
-   - **Firefox** (128+): `limenn-firefox-<version>.zip`
+1. **Download** the zip for your browser from the [latest release](../../releases/latest) (under **Assets**) and unzip it:
+   - **Chrome, Edge, Brave, Arc** (Chromium 120+): [`limenn-chrome.zip`](../../releases/latest/download/limenn-chrome.zip)
+   - **Firefox** (128+): [`limenn-firefox.zip`](../../releases/latest/download/limenn-firefox.zip)
+
+   Don't use *Source code (zip)*: that is the code, not the extension, and the browser will say "Manifest file is missing". The unzipped folder must contain `manifest.json` directly.
 2. **Chrome & co.:** open **`chrome://extensions`**, switch on **Developer mode** (top right) and click **Load unpacked**. Choose the unzipped folder.
    **Firefox:** open **`about:debugging#/runtime/this-firefox`**, click **Load Temporary Add-on…** and choose the `manifest.json` inside the unzipped folder. Firefox removes temporary add-ons when it quits; see below for a permanent install.
 3. A welcome page opens and walks you through the rest. Pin limenn so it's always one click away.
 
 Works in Chrome, Edge, Brave and Arc (Chromium 120+) and Firefox (128+). A Chrome Web Store listing is on its way.
 
-**Firefox differences.** limenn opens in Firefox's sidebar (toolbar button or View → Sidebar) instead of a side panel. The *document vault* (linking a folder for prepared documents) needs a folder picker that Firefox doesn't have, so it is hidden there; you can still attach files by hand. Everything else works the same. Firefox only keeps add-ons that Mozilla has signed (Firefox Developer Edition, Nightly and ESR can turn that check off via `xpinstall.signatures.required`).
+**Firefox differences.** limenn opens in Firefox's sidebar (toolbar button or View → Sidebar) instead of a side panel. The *document vault* (linking a folder for prepared documents) needs a folder picker that Firefox doesn't have, so it is hidden there; you can still attach files by hand. Everything else works the same. Firefox only keeps add-ons that Mozilla has signed (Firefox Developer Edition, Nightly and ESR can turn that check off via `xpinstall.signatures.required`). For a permanent install, use the signed `.xpi` from the latest release when there is one: it leaves out the optional second detector so that it fits Mozilla's 200 MB signing limit (`npm run release:firefox-lite` builds the same package).
 
 <details>
 <summary><b>Build from source instead</b></summary>
@@ -40,7 +42,7 @@ npm install
 npm run build          # Chrome: downloads the pinned, hash-checked models once, then builds into dist/
 npm run build:firefox  # Firefox: the same sources, built into dist-firefox/
 ```
-Then load the `dist/` (or `dist-firefox/`) folder as above. Run `npm test` for the test suite. The optional second detector (`gliner-web-q8.onnx`) is part of the release package. To include it in your own build, set `LIMENN_WEB_MODEL_URL` to a URL or a local path of the file (`LIMENN_WEB_MODEL_URL=/path/to/gliner-web-q8.onnx npm run build`); without it the build prints a warning and limenn uses its rules and the name model. All other models are downloaded automatically on the first build.
+Then load the `dist/` (or `dist-firefox/`) folder as above. Run `npm test` for the test suite. All models, including the optional second detector (`gliner-web-q8.onnx`, about 350 MB, hosted as an asset of the [models-v1 release](../../releases/tag/models-v1)), are downloaded and hash-checked automatically on the first build. To use another copy of the second detector, set `LIMENN_WEB_MODEL_URL` to a URL or a local path (`LIMENN_WEB_MODEL_URL=/path/to/gliner-web-q8.onnx npm run build`).
 </details>
 
 ## Use it

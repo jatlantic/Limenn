@@ -1,6 +1,6 @@
-# Push a tag like v1.0.0 → builds, runs the release checks and attaches the Chrome and Firefox zips to a draft GitHub Release.
-# Needs the repository variable LIMENN_WEB_MODEL_URL (where gliner-web-q8.onnx can be downloaded); its hash is
-# checked against models/models.lock.json, so a wrong or tampered file fails the build.
+# Push a tag like v1.0.0 → builds, runs the release checks and attaches the Chrome and Firefox zips (and a signed Firefox .xpi when Mozilla keys are set) to a draft GitHub Release.
+# The second-detector model is downloaded from the models-v1 release (URL in models/models.lock.json); its hash is
+# checked, so a wrong or tampered file fails the build. LIMENN_WEB_MODEL_URL can override the URL.
 name: Release
 on:
   push:
@@ -16,21 +16,28 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Require the second-detector model URL
-        run: |
-          test -n "$LIMENN_WEB_MODEL_URL" || { echo "::error::Repository variable LIMENN_WEB_MODEL_URL is not set: the release would ship without gliner-web-q8.onnx"; exit 1; }
-        env:
-          LIMENN_WEB_MODEL_URL: ${{ vars.LIMENN_WEB_MODEL_URL }}
       - run: npm ci
       - run: npm test
       - run: npm run release
-        env:
-          LIMENN_WEB_MODEL_URL: ${{ vars.LIMENN_WEB_MODEL_URL }}
       - run: npm run release:firefox
+      # The lite Firefox build (no second detector) fits Mozilla's 200 MB signing limit. With the repository secrets
+      # WEB_EXT_API_KEY and WEB_EXT_API_SECRET (addons.mozilla.org API keys) it is signed too, so Firefox can install it permanently.
+      - run: npm run release:firefox-lite
+      - name: Sign the lite Firefox build
+        run: |
+          if [ -z "$WEB_EXT_API_KEY" ]; then echo "No Mozilla API keys set: skipping signing"; exit 0; fi
+          npx --yes web-ext@10.8.0 sign --source-dir dist-firefox-lite --channel unlisted --artifacts-dir release
         env:
-          LIMENN_WEB_MODEL_URL: ${{ vars.LIMENN_WEB_MODEL_URL }}
+          WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
+          WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
       - name: Check tag matches manifest version
         run: test "v$(node -p "require('./public/manifest.json').version")" = "$GITHUB_REF_NAME"
-      - run: gh release create "$GITHUB_REF_NAME" release/*.zip --draft --generate-notes
+      # Stable file names, so the README can link to .../releases/latest/download/limenn-chrome.zip
+      - run: |
+          mv "release/limenn-$(node -p "require('./package.json').version").zip" release/limenn-chrome.zip
+          mv "release/limenn-firefox-$(node -p "require('./package.json').version").zip" release/limenn-firefox.zip
+      - run: |
+          shopt -s nullglob
+          gh release create "$GITHUB_REF_NAME" release/*.zip release/*.xpi --draft --latest --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}

@@ -6,7 +6,7 @@ import { copyFileSync, cpSync, mkdirSync, readdirSync, readFileSync, rmSync, sta
 import { join, relative, resolve } from 'node:path';
 import lock from '../models/models.lock.json' with { type: 'json' };
 import { sha256File } from './fetch-models.mjs';
-import { DIST, TARGET } from './target.mjs';
+import { DIST, LITE, TARGET, shipped } from './target.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const dist = join(root, DIST);
@@ -41,7 +41,7 @@ for (const f of all.filter((f) => /\.(m?js|html|json)$/.test(f) && !f.startsWith
 }
 
 // 4. Models: present and unmodified.
-for (const f of lock.files) {
+for (const f of shipped(lock.files)) {
   const p = join(dist, 'models', f.dest ?? f.path);
   if (f.optional && !statSync(p, { throwIfNoEntry: false })) { console.warn(`release without optional model ${f.dest ?? f.path}`); continue; }
   if ((await sha256File(p).catch(() => '')) !== f.sha256) problems.push(`model ${f.dest ?? f.path}: missing or hash mismatch`);
@@ -53,7 +53,11 @@ if (problems.length) {
 }
 
 mkdirSync(join(root, 'release'), { recursive: true });
-const zip = join(root, 'release', `limenn-${firefox ? 'firefox-' : ''}${manifest.version}.zip`);
+const zip = join(root, 'release', `limenn-${firefox ? 'firefox-' : ''}${LITE ? 'lite-' : ''}${manifest.version}.zip`);
 rmSync(zip, { force: true });
 execFileSync('zip', ['-r', '-X', '-q', zip, '.'], { cwd: dist, stdio: 'inherit' });
+if (LITE && statSync(zip).size > 200e6) {
+  console.error(`lite package is ${(statSync(zip).size / 1e6).toFixed(0)} MB: over the 200 MB limit for signing`);
+  process.exit(1);
+}
 console.log(`release check passed (${all.length} files) → ${relative(root, zip)} (${(statSync(zip).size / 1e6).toFixed(0)} MB)`);

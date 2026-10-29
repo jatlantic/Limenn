@@ -7,6 +7,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import lock from '../models/models.lock.json' with { type: 'json' };
+import { shipped } from './target.mjs';
 
 export const CACHE = resolve(import.meta.dirname, '../.cache/models');
 
@@ -39,7 +40,7 @@ async function download(url, dest, attempts = 3) {
 /** Ensure every locked file is in .cache/models with the right hash. Throws with a list of what is missing. */
 export async function fetchModels({ log = console.log } = {}) {
   const problems = [];
-  for (const f of lock.files) {
+  for (const f of shipped(lock.files)) {
     const path = resolve(CACHE, f.path);
     if (existsSync(path) && (await sha256File(path)) === f.sha256) continue;
     const url = f.dest === 'gliner-web-q8.onnx' ? (process.env.LIMENN_WEB_MODEL_URL ?? f.url) : f.url;
@@ -69,7 +70,7 @@ export async function fetchModels({ log = console.log } = {}) {
     renameSync(`${path}.part`, path);
   }
   if (problems.length) throw new Error(`Model files not ready:\n  ${problems.join('\n  ')}`);
-  log(`models ok (${lock.files.length} files)`);
+  log(`models ok (${shipped(lock.files).length} files)`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) await fetchModels();

@@ -1,7 +1,11 @@
 // Which browser a build is for: LIMENN_TARGET=firefox (see `npm run build:firefox`), Chrome otherwise.
 // The sources are shared; the targets differ in the manifest and the output folder.
 export const TARGET = process.env.LIMENN_TARGET === 'firefox' ? 'firefox' : 'chrome';
-export const DIST = TARGET === 'firefox' ? 'dist-firefox' : 'dist';
+// LIMENN_LITE=1 leaves the second detector out (~350 MB), which brings the Firefox package under Mozilla's 200 MB signing limit.
+export const LITE = process.env.LIMENN_LITE === '1';
+export const DIST = `${TARGET === 'firefox' ? 'dist-firefox' : 'dist'}${LITE ? '-lite' : ''}`;
+/** Model files this build ships (see models/models.lock.json). */
+export const shipped = (files) => files.filter((f) => !(LITE && f.second_detector));
 
 /** The Chrome manifest (public/manifest.json) turned into one Firefox accepts: event page, sidebar, no side panel/offscreen. */
 export function firefoxManifest(m) {

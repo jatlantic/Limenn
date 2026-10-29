@@ -24,20 +24,23 @@
     {
       "path": "onnx-community/gliner_multi_pii-v1/tokenizer_config.json",
       "url": "https://huggingface.co/onnx-community/gliner_multi_pii-v1/resolve/2e0397a7e8a250d76c37122232b3cbde42c8d629/tokenizer_config.json",
-      "sha256": "78f866883daf7ee2bc400200a155cdbe9116ed0a6ed597ff573ea2c9862a89a6"
+      "sha256": "78f866883daf7ee2bc400200a155cdbe9116ed0a6ed597ff573ea2c9862a89a6",
+      "second_detector": true
     },
     {
       "path": "onnx-community/gliner_multi_pii-v1/tokenizer.json",
       "url": "https://huggingface.co/onnx-community/gliner_multi_pii-v1/resolve/2e0397a7e8a250d76c37122232b3cbde42c8d629/tokenizer.json",
-      "sha256": "914bd3c8fb7b525af9e23b60d0ec7b1248ddb2b99014efd9c02ebeb022f8cab7"
+      "sha256": "914bd3c8fb7b525af9e23b60d0ec7b1248ddb2b99014efd9c02ebeb022f8cab7",
+      "second_detector": true
     },
     {
       "path": "gliner_multi_pii-v1/onnx/model_web_q8.onnx",
       "dest": "gliner-web-q8.onnx",
-      "url": null,
-      "build": "WASM-safe 8-bit export of urchade/gliner_multi_pii-v1 (Apache-2.0), shipped in the release package. Set LIMENN_WEB_MODEL_URL (or fill in url) to download it when building from source; without it the build skips the second detector.",
+      "url": "https://github.com/jatlantic/Limenn/releases/download/models-v1/gliner-web-q8.onnx",
+      "build": "WASM-safe 8-bit export of urchade/gliner_multi_pii-v1 (Apache-2.0), hosted as an asset of the models-v1 release of this repository. Set LIMENN_WEB_MODEL_URL (a URL or a local path) to use another copy; the sha256 is always checked.",
       "sha256": "fcd0d0a5a27aeaef14748505bb1c30bece65e4d3a47d17c7e87a105e0b29f783",
-      "optional": true
+      "optional": true,
+      "second_detector": true
     },
     {
       "path": "tessdata_best/eng.traineddata",

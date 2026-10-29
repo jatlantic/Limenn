@@ -10,9 +10,11 @@
   "scripts": {
     "build": "vite build && node scripts/build-content.mjs",
     "build:firefox": "node scripts/run-target.mjs firefox npm run build",
+    "build:firefox-lite": "node scripts/run-target.mjs firefox-lite npm run build",
     "fetch-models": "node scripts/fetch-models.mjs",
     "release": "node scripts/release.mjs",
     "release:firefox": "node scripts/run-target.mjs firefox node scripts/release.mjs",
+    "release:firefox-lite": "node scripts/run-target.mjs firefox-lite node scripts/release.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p .",
     "fixtures": "node scripts/make-fixture.mjs",
