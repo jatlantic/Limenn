@@ -103,6 +103,14 @@ const LABELLED_ID = new RegExp(`${NB}(?:(?:${ID_LABELS.join('|')})${ID_SUFFIX}(?
 const CODE_ID = /(?<![\p{L}\p{N}\-/.])[A-Z]{1,3}-?\d{4,}(?:-[A-Z0-9]{1,4})?(?![\p{L}\p{N}])/gu;
 const CODE_STOP = /^(?:ISO|EN|DIN|IEC|COVID|SARS|CVE|RFC|ART|CHE|UID|IP|TCP|USB|HDMI|PCIE?|DDR|RTX|GTX|GPT|LTE|AHV|AVS|CH|DE|FR|IT|AT|Q|H)-?\d/;
 
+// Case references (Aktenzeichen) after their label. A file reference is shared by every letter of a case, so it gets
+// its own type: the AI can tell documents of the same case apart without learning the number.
+// "Az. 12 O 345/24", "Aktenzeichen: VN-2026-00412", "Unser Zeichen 4711/26-ks", "Case No. 2024/118", "Réf. dossier: B-3391"
+const CASE_LABEL = String.raw`(?:Aktenzeichen|Az\.|AZ|Gz\.|Geschäftszeichen|Gesch\.-?Z\.|(?:Unser|Ihr|Unsere|Ihre)[ \t]Zeichen|Vorgangs(?:nummer|-?Nr\.?)|Fall(?:nummer|-?Nr\.?)|Akten(?:nummer|-?Nr\.?)|Schaden(?:nummer|-?Nr\.?)|Case[ \t](?:No\.?|number|ref\.?)|File[ \t](?:No\.?|number|ref\.?)|Reference[ \t](?:No\.?|number)|(?:Our|Your)[ \t]ref(?:erence)?\.?|Réf(?:\.|érence)(?:[ \t]dossier)?|N°[ \t]de[ \t]dossier|Dossier[ \t]n°|Rif\.|Pratica[ \t]n\.?)`;
+const CASE_VALUE = String.raw`(\d{1,4}[ \t]?[A-Z]{1,4}[ \t]?\d{1,6}\/\d{2,4}|[A-Z0-9][A-Z0-9\-/.]*\d[A-Za-z0-9\-/.]*)`;
+// The label may carry a qualifier before the colon: "Aktenzeichen Amtsgericht: 12 C 345/26".
+const CASE_REF = new RegExp(String.raw`${NB}${CASE_LABEL}(?:[ \t]\p{Lu}[\p{L}.-]+){0,2}?[ \t]?[:#]?[ \t]*${CASE_VALUE}`, 'gu');
+
 function stripCode(v: string) {
   return v.replace(/[.\-/\s]+$/, '');
 }
@@ -127,6 +135,14 @@ const OTHER_IDS: RegExp[] = [
 
 export function detectIds(text: string): Entity[] {
   const out: Entity[] = [];
+  CASE_REF.lastIndex = 0;
+  for (const m of text.matchAll(CASE_REF)) {
+    const code = stripCode(m[1]);
+    if ((code.match(/\d/g) ?? []).length < 3) continue;
+    const start = m.index! + m[0].lastIndexOf(m[1]);
+    out.push(e(text, start, start + code.length, 'CASE_REF'));
+  }
+  const isCase = (s: number, en: number) => out.some((c) => c.type === 'CASE_REF' && s < c.end && c.start < en);
   for (const re of COURT_REFS) {
     re.lastIndex = 0;
     for (const m of text.matchAll(re)) out.push(e(text, m.index!, m.index! + m[0].length, 'ID_NUMBER', 0.9));
@@ -149,6 +165,7 @@ export function detectIds(text: string): Entity[] {
     if ((code.match(/\d/g) ?? []).length < 3 || /^(?:19|20)\d{2}$/.test(code)) continue; // too short, or just a year
     if (/^756[.\s]?\d{4}/.test(code) || /^[A-Z]{2}\d{2}[\s]?[A-Z0-9]{4}/.test(code)) continue; // AHV / IBAN have their own rules
     const start = m.index! + m[0].lastIndexOf(m[1]);
+    if (isCase(start, start + code.length)) continue;
     out.push(e(text, start, start + code.length, 'ID_NUMBER'));
   }
   CODE_ID.lastIndex = 0;
@@ -218,6 +235,10 @@ const NAME_FIELD = new RegExp(
 );
 // "BOURCARD, Zoey" · "RIVIÈRE, Claude"
 const INVERTED = /(?<![\p{L}])(\p{Lu}[\p{Lu}'’-]{1,}),\s(\p{Lu}[\p{Ll}'’-]+)(?![\p{L}])/gu;
+/** Floor markers in German addresses: "3. OG", "EG", "DG". */
+export const FLOOR_WORD = /^(?:OG|EG|UG|DG|KG|OBERGESCHOSS|ERDGESCHOSS|DACHGESCHOSS)$/;
+/** Street names, also abbreviated: "Marktstr", "Bahnhofstrasse", "Rosenweg". */
+export const STREET_WORD = /(?:str|straße|strasse|gasse|weg|platz|allee|ring|damm|ufer|chaussee)\.?$/i;
 // "M. Rossi", "J.-P. Favre", "A. B. Keller"
 const INITIALS = /(?<![\p{L}.])(?:\p{Lu}\.(?:-?\p{Lu}\.)?[ \t]?){1,2}\p{Lu}[\p{Ll}'’-]{2,}(?:-\p{Lu}[\p{Ll}'’-]+)?(?![\p{L}])/gu;
 // Honorific + name: "Herrn Kowalczyk", "Mme Rochat", "sig.ra Bernasconi", "avv. Pedrazzini", "RA Dr. Meier"
@@ -225,6 +246,8 @@ const HONORIFIC_NAME = new RegExp(
   `(?<![\\p{L}])(?:Herrn?|Frau|Hr\\.|Fr\\.|Mr\\.?|Mrs\\.?|Ms\\.?|Mme\\.?|Mlle|Monsieur|Madame|Signora|Signor|Sig\\.ra|Sig\\.|sig\\.ra|sig\\.|Dott\\.(?:ssa)?|dott\\.(?:ssa)?|avv\\.|Avv\\.|RA|Me|Maître|lic\\. iur\\.)[ \\t]+(?:(?:Dr\\.|Prof\\.|med\\.|dott\\.)[ \\t]+)*(\\p{Lu}[\\p{Ll}'’-]+(?:[ \\t-]\\p{Lu}[\\p{Ll}'’-]+)?)`,
   'gu',
 );
+// Letter address block: the salutation on its own line, the name on the next: "Herrn\nJonas Albrecht-Werner".
+const ADDRESS_BLOCK_NAME = new RegExp(`(?:^|\\n)[ \\t]*(?:Herrn?|Frau|Monsieur|Madame|Signora|Signor|Mr\\.?|Mrs\\.?|Ms\\.?)[ \\t]*\\n[ \\t]*(?:(?:Dr\\.|Prof\\.)[ \\t]+)*(${NAME_WORD}(?:[ \\t]${NAME_WORD}){0,2})[ \\t]*(?=\\n|$)`, 'gu');
 // "Familie Meier", "famille Favre", "Famiglia Bernasconi", "the Smith family"
 const FAMILY = /(?<![\p{L}])(?:Familie|Fam\.|famille|Famille|famiglia|Famiglia)[ \t]+(\p{Lu}[\p{Ll}'’-]+(?:-\p{Lu}[\p{Ll}'’-]+)?)/gu;
 // Chat speakers: "[09:09] Odie (Support):" "Sandra (Support):"
@@ -274,7 +297,7 @@ export function detectPeopleAndOrgs(text: string): Entity[] {
   const out: Entity[] = [];
   INITIALS.lastIndex = 0;
   for (const m of text.matchAll(INITIALS)) out.push(e(text, m.index!, m.index! + m[0].length, 'PERSON', 0.85));
-  for (const re of [INTRO, GREETING, THANKS, SIGNOFF, HEADER, SPEAKER, HONORIFIC_NAME, FAMILY]) {
+  for (const re of [INTRO, GREETING, THANKS, SIGNOFF, HEADER, SPEAKER, HONORIFIC_NAME, ADDRESS_BLOCK_NAME, FAMILY]) {
     re.lastIndex = 0;
     for (const m of text.matchAll(re)) pushName(out, text, m.index! + m[0].lastIndexOf(m[1]), m[1]);
   }
@@ -294,7 +317,11 @@ export function detectPeopleAndOrgs(text: string): Entity[] {
     out.push(e(text, start, start + value.length, 'PERSON', 0.9));
   }
   INVERTED.lastIndex = 0;
-  for (const m of text.matchAll(INVERTED)) out.push(e(text, m.index!, m.index! + m[0].length, 'PERSON', 0.9));
+  for (const m of text.matchAll(INVERTED)) {
+    // "3. OG, Marktstr. 59" is a floor and a street, not "SURNAME, Firstname".
+    if (FLOOR_WORD.test(m[1]) || STREET_WORD.test(m[2]) || /^\.?[ \t]*\d/.test(text.slice(m.index! + m[0].length))) continue;
+    out.push(e(text, m.index!, m.index! + m[0].length, 'PERSON', 0.9));
+  }
   for (const re of ORG_RES) {
     re.lastIndex = 0;
     for (const m of text.matchAll(re)) {

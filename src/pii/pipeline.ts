@@ -1,10 +1,10 @@
 import { findCandidates } from './candidates';
-import { joinNameParts, mergeEntities } from './merge';
+import { joinAddressParts, joinNameParts, mergeEntities } from './merge';
 import { detectNer, type TokenClassifier } from './ner';
 import { detectRegex } from './regex';
 import type { Classifier, ClassifierResult, Entity, Settings } from './types';
 import { combineModels, DEFAULT_ENSEMBLE } from './ensemble';
-import { passesLowercaseNameGate, passesProperNounGate } from './filters';
+import { passesLowercaseNameGate, passesProperNounGate, retypeByShape } from './filters';
 import { detectKnown, type KnownValue } from './gazetteer';
 import { isProductLike, isPublicTerm } from './public-terms';
 import { Vault } from './vault';
@@ -163,14 +163,14 @@ export async function detect(text: string, opts: Omit<RedactOptions, 'vault'>): 
   let nerLow: Entity[] = [];
   // Model hits pass the allow list, the public-term filter and the proper-noun gate (roles, pronouns…).
   // An amount needs a number: "monthly salary" or "the settlement" on their own say nothing about anyone's money.
-  const keepModelHit = (e: Entity) => notAllowed(e) && !isPublic(e) && passesProperNounGate(e, text) && (e.type !== 'FINANCIAL' || /\d/.test(e.text));
+  const keepModelHit = (e: Entity) => notAllowed(e) && !isPublic(e) && passesProperNounGate(e, text) && (e.type !== 'FINANCIAL' || (settings.financialPolicy !== 'none' && /\d/.test(e.text)));
   const ens = { ...DEFAULT_ENSEMBLE, tokenHigh: settings.nerThreshold, ...settings.ensemble };
   const useToken = settings.enableNer && !!opts.ner;
   if (useToken || opts.spanNer) {
     t = performance.now();
     emit({ stage: 'ner', status: 'start' });
     const tokenHits = useToken
-      ? (await detectNer(titleCaseCapsRuns(text), opts.ner!)).map((e) => trimEntity(text, { ...e, text: text.slice(e.start, e.end) })).filter(keepModelHit)
+      ? (await detectNer(titleCaseCapsRuns(text), opts.ner!)).map((e) => retypeByShape(trimEntity(text, { ...e, text: text.slice(e.start, e.end) }))).filter(keepModelHit)
       : [];
     if (useToken && text.length <= LOWERCASE_PASS_MAX && /(?<![\p{L}\p{N}])\p{Ll}{2,}/u.test(text)) {
       const lower = (await detectNer(capitalizeLowercaseWords(text), opts.ner!))
@@ -179,7 +179,7 @@ export async function detect(text: string, opts: Omit<RedactOptions, 'vault'>): 
         .filter((e) => !tokenHits.some((t) => e.start < t.end && t.start < e.end));
       tokenHits.push(...lower);
     }
-    const spanHits = opts.spanNer ? (await opts.spanNer(text)).map((e) => trimEntity(text, { ...e, source: 'ner' as const })).filter(keepModelHit) : [];
+    const spanHits = opts.spanNer ? (await opts.spanNer(text)).map((e) => retypeByShape(trimEntity(text, { ...e, source: 'ner' as const }))).filter(keepModelHit) : [];
     if (useToken && opts.spanNer) {
       ({ accepted: nerAccepted, uncertain: nerLow } = combineModels(tokenHits, spanHits, ens));
     } else if (useToken) {
@@ -195,7 +195,7 @@ export async function detect(text: string, opts: Omit<RedactOptions, 'vault'>): 
   }
 
   // "Send unchanged" also beats the user's own patterns, so one match of a shape can be exempted.
-  let merged = joinNameParts(text, mergeEntities([...(opts.manual ?? []).filter(notAllowed), ...regexHits, ...nerAccepted]));
+  let merged = joinAddressParts(text, joinNameParts(text, mergeEntities([...(opts.manual ?? []).filter(notAllowed), ...regexHits, ...nerAccepted])));
 
   let jev: ClassifierResult | undefined;
   let candidates = 0;

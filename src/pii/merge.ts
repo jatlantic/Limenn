@@ -42,3 +42,34 @@ export function joinNameParts(text: string, entities: Entity[]): Entity[] {
   }
   return out;
 }
+
+/** "3. OG, " in front of a street: the floor belongs to the address. */
+const FLOOR_BEFORE = /(?<![\p{L}\p{N}])(?:\d{1,2}\.[ \t]?(?:OG|UG|Stock|Etage|Obergeschoss)|EG|DG|UG|Erdgeschoss|Dachgeschoss),?[ \t]*$/u;
+
+/**
+ * Address parts found by different rules: "Marktstr. 59" + ", " + "47798 Krefeld" (+ a floor in front). Joined into one
+ * ADDRESS, so the AI sees one address instead of [ADDRESS-1], [POSTAL_CODE-1] side by side.
+ */
+export function joinAddressParts(text: string, entities: Entity[]): Entity[] {
+  const out: Entity[] = [];
+  for (const e of entities) {
+    const prev = out[out.length - 1];
+    const gap = prev ? text.slice(prev.end, e.start) : '';
+    const joinable = prev && prev.type === 'ADDRESS' && (e.type === 'POSTAL_CODE' || e.type === 'LOCATION') && prev.source !== 'manual' && e.source !== 'manual';
+    if (joinable && /^,?[ \t]*\n?[ \t]*$/.test(gap)) {
+      out[out.length - 1] = { ...prev, end: e.end, text: text.slice(prev.start, e.end), score: Math.min(prev.score, e.score) };
+      continue;
+    }
+    if (e.type === 'ADDRESS' && e.source !== 'manual') {
+      const line = text.slice(Math.max(prev?.end ?? 0, e.start - 40), e.start);
+      const floor = FLOOR_BEFORE.exec(line);
+      if (floor) {
+        const start = e.start - floor[0].length;
+        out.push({ ...e, start, text: text.slice(start, e.end) });
+        continue;
+      }
+    }
+    out.push(e);
+  }
+  return out;
+}

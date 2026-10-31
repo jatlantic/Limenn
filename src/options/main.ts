@@ -3,6 +3,7 @@ import { mergeEntities } from '../pii/merge';
 import type { EntityType, Settings } from '../pii/types';
 import { PROTECTED_KEY } from '../shared/jobs';
 import { logoSvg } from '../shared/logo';
+import { IS_FIREFOX } from '../shared/platform';
 import { addProtected, loadProtected, loadSettings, removeProtected, saveProtected, saveSettings } from '../shared/storage';
 
 document.getElementById('logo')!.innerHTML = logoSvg(14);
@@ -18,6 +19,7 @@ function read(base: Settings): Settings {
     nerThreshold: +field('nerThreshold').value,
     allowList: (form.elements.namedItem('allowList') as HTMLTextAreaElement).value.split('\n').map((s) => s.trim()).filter(Boolean),
     persistMapping: field('persistMapping').checked,
+    docVault: field('docVault').checked,
     financialPolicy: (form.elements.namedItem('financialPolicy') as HTMLSelectElement).value as Settings['financialPolicy'],
     nextGen: (form.elements.namedItem('nextGen') as HTMLSelectElement).value as Settings['nextGen'],
   };
@@ -29,6 +31,7 @@ function read(base: Settings): Settings {
   field('nerThreshold').value = String(s.nerThreshold);
   (form.elements.namedItem('allowList') as HTMLTextAreaElement).value = s.allowList.join('\n');
   field('persistMapping').checked = s.persistMapping;
+  field('docVault').checked = s.docVault;
   (form.elements.namedItem('financialPolicy') as HTMLSelectElement).value = s.financialPolicy;
   (form.elements.namedItem('nextGen') as HTMLSelectElement).value = s.nextGen;
 })();
@@ -149,3 +152,6 @@ el<HTMLInputElement>('pr-file').addEventListener('change', async (e) => {
 
 renderPending();
 renderList();
+
+// About: the installed version and browser build, to quote when reporting a problem.
+el('about-version').textContent = `version ${chrome.runtime.getManifest().version} · ${IS_FIREFOX ? 'Firefox' : 'Chrome'} build`;

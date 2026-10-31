@@ -9,6 +9,8 @@ export type EntityType =
   | 'CREDIT_CARD'
   | 'NATIONAL_ID'
   | 'ID_NUMBER'
+  /** Case / file reference (Aktenzeichen): "Az. 12 O 345/24". */
+  | 'CASE_REF'
   | 'DATE'
   | 'IP'
   | 'URL'
@@ -57,12 +59,14 @@ export interface Settings {
   allowList: string[];
   /** Keep the placeholder mapping across browser restarts (stored locally, never sent anywhere). */
   persistMapping: boolean;
-  /** 'context': only amounts next to salary/rent/debt… words; 'all': every money amount. */
-  financialPolicy: 'context' | 'all';
+  /** 'none': amounts stay (the AI can calculate); 'context': only amounts next to salary/rent/debt… words; 'all': every money amount. */
+  financialPolicy: 'none' | 'context' | 'all';
   /** Thresholds for combining a token model with a span model (see ensemble.ts); optional overrides. */
   ensemble?: Partial<import('./ensemble').EnsembleThresholds>;
   /** Next-generation span detector (local, CPU): off, only for vault documents (prepared ahead of time), or everywhere. */
   nextGen: 'off' | 'vault' | 'all';
+  /** Document vault (beta): a linked folder whose documents are prepared ahead of time. Off by default. */
+  docVault: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -75,6 +79,7 @@ export const DEFAULT_SETTINGS: Settings = {
   enableJev: true,
   allowList: ['Claude', 'Anthropic', 'ChatGPT', 'OpenAI'],
   persistMapping: false,
-  financialPolicy: 'context',
+  financialPolicy: 'none',
   nextGen: 'vault',
+  docVault: false,
 };

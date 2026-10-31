@@ -6,9 +6,11 @@ import { composeMessage, protectedCount } from '../shared/compose';
 import { ALLOW_KEY, type ItemView, type JobState, LAST_JOB_KEY, PROTECTED_KEY, type StepState } from '../shared/jobs';
 import { logoSvg } from '../shared/logo';
 import { PLACEHOLDER_RE } from '../pii/vault';
-import { type ContentResponse, ENABLED_KEY } from '../shared/messages';
+import { type ContentResponse, ENABLED_KEY, SETTINGS_KEY } from '../shared/messages';
 import { CHAT_URL_PATTERNS, NEW_CHAT_URL, pickAdapter } from '../content/adapters';
-import { clearVault, loadProtected, loadVault, saveProtected } from '../shared/storage';
+import { clearVault, loadProtected, loadSettings, loadVault, saveProtected } from '../shared/storage';
+import { HAS_FOLDER_PICKER } from '../shared/platform';
+import type { Settings } from '../pii/types';
 import { attachProtect } from '../shared/protect-popover';
 import { initDocVault } from './docvault';
 import { RISK_LABEL } from '../pii/guard';
@@ -55,6 +57,9 @@ function renderModel(s: ModelStatus) {
 renderModel({ state: 'loading', detail: 'Starting local model…' });
 
 // ---------- job rendering ----------
+/** Document sheet colours (the prompt uses the accent blue). */
+const SHEET_COLORS = ['#0f8a5f', '#d9480f', '#7c3aed', '#c2255c', '#0b7285', '#a16207'];
+
 const STATUS_LABEL: Record<JobState['status'], string> = {
   running: 'Cleaning',
   cleaned: 'Cleaned',
@@ -118,9 +123,17 @@ function renderJob() {
     return;
   }
   if (!job.items.some((i) => i.id === active)) active = job.items[0].id;
+  // Sheet tabs, like a spreadsheet: the prompt and every document in a colour of its own, so the boxes below show
+  // at a glance which one you are looking at.
+  let fileNo = 0;
+  const colorOf = new Map(job.items.map((i) => [i.id, i.kind === 'prompt' ? 'var(--accent)' : SHEET_COLORS[fileNo++ % SHEET_COLORS.length]]));
   $('tabs').innerHTML = job.items
-    .map((i) => `<button role="tab" data-tab="${esc(i.id)}" aria-selected="${i.id === active}" title="${esc(i.name)}">${esc(i.name)}<span class="n">${i.entities.length || ''}</span></button>`)
+    .map(
+      (i) =>
+        `<button role="tab" class="sheet ${i.kind}" style="--sheet:${colorOf.get(i.id)}" data-tab="${esc(i.id)}" aria-selected="${i.id === active}" title="${esc(i.kind === 'prompt' ? 'Your message' : i.name)}"><span class="ic" aria-hidden="true">${i.kind === 'prompt' ? '✎' : '▤'}</span><span class="nm">${esc(i.kind === 'prompt' ? 'your message' : i.name)}</span><span class="n">${i.entities.length || ''}</span></button>`,
+    )
     .join('');
+  $('job').style.setProperty('--sheet', colorOf.get(active) ?? 'var(--accent)');
   const item = job.items.find((i) => i.id === active)!;
   renderSteps(item);
 
@@ -310,6 +323,8 @@ $('copy').addEventListener('click', async () => {
 });
 
 $('open-options').addEventListener('click', () => chrome.runtime.openOptionsPage());
+$('panel-version').textContent = `v${chrome.runtime.getManifest().version}`;
+$('about-link').addEventListener('click', () => chrome.runtime.openOptionsPage());
 
 // ---------- live updates ----------
 chrome.storage.session.onChanged.addListener((changes) => {
@@ -341,3 +356,8 @@ chrome.runtime.onMessage.addListener((msg) => {
   // Make sure the engine is up and the model loaded; reports progress via limenn:model.
   chrome.runtime.sendMessage({ type: 'limenn:warm' }).then((r) => r?.ok && renderModel({ state: 'ready' }), () => {});
 })();
+
+// The document vault is a beta feature, shown only when switched on in Settings (and where folders can be linked).
+const showVault = (on: boolean) => ($('docvault').hidden = !on || !HAS_FOLDER_PICKER);
+loadSettings().then((s) => showVault(s.docVault));
+chrome.storage.local.onChanged.addListener((c) => c[SETTINGS_KEY] && showVault(!!(c[SETTINGS_KEY].newValue as Settings | undefined)?.docVault));

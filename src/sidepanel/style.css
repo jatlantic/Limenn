@@ -30,14 +30,20 @@ main { padding: 4px 14px 28px; display: grid; gap: 12px; }
 .status.error { color: var(--red); background: var(--red-bg); border-color: #fecaca; }
 .count { font-size: 12px; color: var(--muted); }
 
-.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
-.tabs button { border: 0; background: none; padding: 8px 10px; font: 400 12px var(--mono); color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tabs button[aria-selected='true'] { color: var(--accent); border-color: var(--accent); }
-.tabs button .n { font: 500 10.5px var(--mono); color: var(--accent-deep); margin-left: 4px; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 2px solid var(--sheet, var(--accent)); }
+/* sheet tabs: each item in its own colour (--sheet), the selected one filled */
+.tabs button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid color-mix(in srgb, var(--sheet) 45%, transparent); border-bottom: 0; border-radius: 8px 8px 0 0; background: color-mix(in srgb, var(--sheet) 10%, #fff); padding: 7px 10px; font: 400 12px var(--mono); color: var(--sheet); max-width: 200px; min-width: 0; }
+.tabs button .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.tabs button .ic { font-size: 12px; }
+.tabs button[aria-selected='true'] { background: var(--sheet); border-color: var(--sheet); color: #fff; }
+.tabs button .n { font: 500 10.5px var(--mono); margin-left: 2px; opacity: 0.85; }
+#job .doc.original, #job .doc.clean { border-left: 3px solid var(--sheet, var(--accent)); background: color-mix(in srgb, var(--sheet, var(--accent)) 5%, #fff); }
 
 /* pipeline timeline */
 .steps { list-style: none; margin: 0; padding: 0; display: grid; }
-.step { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: start; padding: 9px 0; position: relative; }
+.step { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 9px 0; position: relative; }
+/* narrow panel: the step's numbers go under its title instead of being cut off at the right edge */
+@media (max-width: 380px) { .step { grid-template-columns: 22px minmax(0, 1fr); } .step .res { grid-column: 2; text-align: left; white-space: normal; padding-top: 0; } }
 .step:not(:last-child)::before { content: ''; position: absolute; left: 10.5px; top: 30px; bottom: -8px; width: 1px; background: var(--line); }
 .step .mark { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--accent); background: var(--card); display: grid; place-items: center; font: 500 10.5px var(--mono); color: var(--muted); }
 .step.running .mark { border-color: var(--accent); color: var(--accent); }
@@ -142,3 +148,8 @@ body.off .switch span { color: var(--red); }
 .protected-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
 /* Narrow side panel: drop the tagline before anything wraps or touches. */
 @media (max-width: 400px) { .brand .tag { display: none; } }
+
+/* version, links to Settings → About */
+.panel-foot { padding: 14px 2px 4px; text-align: center; }
+.panel-foot .link { border: 0; background: none; font: 400 10.5px var(--mono); color: var(--muted); cursor: pointer; }
+.panel-foot .link:hover { color: var(--accent); }

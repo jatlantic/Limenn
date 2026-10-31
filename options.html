@@ -93,16 +93,23 @@
         </div>
         <div class="field"><label>Money amounts</label>
           <select name="financialPolicy">
+            <option value="none">Keep all amounts, so the AI can calculate with them</option>
             <option value="context">Redact personal amounts only (salary, rent, deposit, debt…) — keeps invoice totals readable</option>
             <option value="all">Redact every amount</option>
           </select>
         </div>
         <label class="check"><input type="checkbox" name="persistMapping" /> Remember the placeholder vault after the browser restarts</label>
         <p class="help" style="margin-top:-8px">Off: the vault lives only for this browser session; older answers then keep their placeholders.</p>
+        <label class="check"><input type="checkbox" name="docVault" /> Document vault (beta): link a folder whose documents are prepared ahead of time</label>
+        <p class="help" style="margin-top:-8px">Shows the vault in the side panel, the workspace and the limenn bar. Not available in Firefox.</p>
       </section>
 
       <div class="actions"><button class="btn primary" type="submit" title="Save the settings below (the protected list saves by itself)">Save settings</button><span id="msg"></span></div>
     </form>
+    <section class="card" id="about" aria-labelledby="about-h" style="margin-top:28px">
+      <div class="sec-head"><h2 id="about-h">About</h2><span class="eyebrow mono" id="about-version"></span></div>
+      <p class="help">limenn removes personal data from what you send to ChatGPT, Claude and Grok, on this computer, and puts it back into the answers. <a href="https://limenn.io" target="_blank" rel="noopener">limenn.io</a> · <a href="https://github.com/jatlantic/Limenn/releases" target="_blank" rel="noopener">Releases &amp; changes</a></p>
+    </section>
     <p class="help" style="margin-top:28px">limenn reduces, but cannot guarantee to remove, all personal data. It is not legal advice and not affiliated with OpenAI, Anthropic or xAI. Free for noncommercial use. <a href="https://github.com/jatlantic/Limenn/blob/main/DISCLAIMER.md" target="_blank" rel="noopener">Disclaimer</a> · <a href="https://github.com/jatlantic/Limenn/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a> · <a href="https://github.com/jatlantic/Limenn/blob/main/THIRD_PARTY_NOTICES.md" target="_blank" rel="noopener">Licenses</a></p>
     <script type="module" src="/src/options/main.ts"></script>
   </body>

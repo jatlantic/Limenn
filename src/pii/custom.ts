@@ -145,7 +145,7 @@ export function makeRule(kind: ProtectedRule['kind'], value: string, type: Entit
 export const sameRule = (a: Pick<ProtectedRule, 'kind' | 'value'>, b: Pick<ProtectedRule, 'kind' | 'value'>) =>
   a.kind === b.kind && normalizeValue(a.value).toLowerCase() === normalizeValue(b.value).toLowerCase();
 
-const TYPES: EntityType[] = ['PERSON', 'ORG', 'LOCATION', 'ADDRESS', 'EMAIL', 'PHONE', 'IBAN', 'CREDIT_CARD', 'NATIONAL_ID', 'ID_NUMBER', 'DATE', 'IP', 'URL', 'POSTAL_CODE', 'HEALTH', 'FINANCIAL'];
+const TYPES: EntityType[] = ['PERSON', 'ORG', 'LOCATION', 'ADDRESS', 'EMAIL', 'PHONE', 'IBAN', 'CREDIT_CARD', 'NATIONAL_ID', 'ID_NUMBER', 'CASE_REF', 'DATE', 'IP', 'URL', 'POSTAL_CODE', 'HEALTH', 'FINANCIAL'];
 
 /** Parse an exported file (or anything else) into valid rules; invalid entries are dropped. */
 export function parseRules(json: unknown): ProtectedRule[] {

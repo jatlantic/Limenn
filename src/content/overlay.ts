@@ -3,7 +3,9 @@
 import { protectedCount } from '../shared/compose';
 import { DOCVAULT_KEY, type DocVaultState, emptyDocVault, type JobFile, type JobState, type StepState } from '../shared/jobs';
 import { logoSvg } from '../shared/logo';
-import { ENABLED_KEY } from '../shared/messages';
+import { ENABLED_KEY, SETTINGS_KEY } from '../shared/messages';
+import { loadSettings } from '../shared/storage';
+import type { Settings } from '../pii/types';
 import { SUPPORTED_EXT } from '../docvault/types';
 import type { SiteAdapter } from './adapters';
 import css from './overlay.css';
@@ -388,14 +390,31 @@ export function mountOverlay(site: SiteAdapter, deliver: Deliver, pressSend: Cli
     }
   }
 
-  ta.addEventListener('input', grow);
-  ta.addEventListener('keydown', (e) => {
+  const onPromptKey = (e: KeyboardEvent) => {
     e.stopPropagation(); // keep the site's shortcuts from firing while typing here
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
       submit();
     }
-  });
+  };
+  const onVaultKey = (e: KeyboardEvent) => {
+    e.stopPropagation();
+    if (e.key === 'Escape') setVaultOpen(false);
+  };
+  ta.addEventListener('input', grow);
+  ta.addEventListener('keydown', onPromptKey);
+  // key-guard.ts stops keys typed in the bar before the site sees them (and before they reach these fields): it hands
+  // them over here instead.
+  globalThis.__limennKeys = (e) => {
+    const el = root.activeElement;
+    if (e.type === 'keydown') {
+      if (el === ta) onPromptKey(e as KeyboardEvent);
+      else if (el === vaultQ) onVaultKey(e as KeyboardEvent);
+    } else if (e.type === 'input') {
+      if (el === ta) grow();
+      else if (el === vaultQ) renderVault();
+    }
+  };
   sendBtn.addEventListener('click', submit);
   $('.attach').addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => {
@@ -430,11 +449,15 @@ export function mountOverlay(site: SiteAdapter, deliver: Deliver, pressSend: Cli
     renderChips();
   });
   vaultBtn.addEventListener('click', () => setVaultOpen(vaultPop.hidden !== false));
+  // The document vault is a beta feature: its button shows only when switched on in Settings.
+  const showVaultButton = (on: boolean) => {
+    vaultBtn.hidden = !on;
+    if (!on) setVaultOpen(false);
+  };
+  loadSettings().then((s) => showVaultButton(s.docVault), () => showVaultButton(false));
+  chrome.storage.local.onChanged.addListener((c) => c[SETTINGS_KEY] && showVaultButton(!!(c[SETTINGS_KEY].newValue as Settings | undefined)?.docVault));
   vaultQ.addEventListener('input', renderVault);
-  vaultQ.addEventListener('keydown', (e) => {
-    e.stopPropagation();
-    if (e.key === 'Escape') setVaultOpen(false);
-  });
+  vaultQ.addEventListener('keydown', onVaultKey);
   $('.vault-list').addEventListener('click', (e) => {
     const id = (e.target as HTMLElement).closest<HTMLElement>('.vault-item')?.dataset.id;
     const doc = docVault.docs.find((d) => d.id === id);

@@ -19,7 +19,7 @@ export const docId = async (path: string) => (await sha256(path)).slice(0, 16);
 
 /** Only the settings that change detection results; a different key re-prepares the doc. */
 /** Bump when detection rules change, so prepared vault documents are re-prepared with the new rules. */
-export const DETECTOR_VERSION = 4;
+export const DETECTOR_VERSION = 5;
 
 export const settingsKey = (s: Settings, nextGen = false) =>
   JSON.stringify([DETECTOR_VERSION, nextGen, s.financialPolicy, s.enableNer && s.nerModel, s.nerThreshold, s.enableJev && !!s.openrouterKey && [s.jevModel, s.jevThreshold], [...s.allowList].sort()]);

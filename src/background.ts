@@ -1,6 +1,6 @@
 // Service worker: routes cleaning jobs between the Limenn bar (content script), the side panel and the
 // offscreen engine; persists the placeholder mapping; relays live progress to the claude.ai tab.
-import { ALLOW_KEY, HISTORY_KEY, type HistoryEntry, WS_TABS_KEY, DOCVAULT_KEY, type DocVaultState, emptyDocVault, type EngineResult, type JobInput, type JobState, LAST_INPUT_KEY, LAST_JOB_KEY } from './shared/jobs';
+import { ALLOW_KEY, HISTORY_KEY, type HistoryEntry, WS_TABS_KEY, DOCVAULT_KEY, type DocVaultState, emptyDocVault, type EngineResult, type JobInput, type JobState, JOBS_KEY, LAST_INPUT_KEY, LAST_JOB_KEY } from './shared/jobs';
 import { loadProtected, loadSettings, saveVault } from './shared/storage';
 import { Vault, type VaultData } from './pii/vault';
 import { VAULT_KEY } from './shared/messages';
@@ -169,7 +169,19 @@ async function runJob(job: JobState, input: JobInput, displayPrompt = input.prom
 /** Store the latest job (for a panel opened later) and forward it to the tab's Limenn bar. */
 function publish(job: JobState) {
   chrome.storage.session.set({ [LAST_JOB_KEY]: job }).catch(() => {});
+  if (job.status !== 'running') rememberJob(job);
   if (job.tabId != null) chrome.tabs.sendMessage(job.tabId, { type: 'limenn:job', job }).catch(() => {});
+}
+
+/** Keep the last 50 finished jobs, so "details" on an earlier workspace message can show it in the side panel. */
+let jobsWrite = Promise.resolve();
+function rememberJob(job: JobState) {
+  jobsWrite = jobsWrite.then(async () => {
+    const jobs = ((await chrome.storage.session.get(JOBS_KEY))[JOBS_KEY] ?? {}) as Record<string, JobState>;
+    jobs[job.id] = { ...jobs[job.id], ...job };
+    const keep = Object.values(jobs).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)).slice(0, 50);
+    await chrome.storage.session.set({ [JOBS_KEY]: Object.fromEntries(keep.map((j) => [j.id, j])) });
+  }).catch(() => {});
 }
 
 const titleOf = (input: JobInput) =>
@@ -189,6 +201,14 @@ async function wakeTab(tabId: number, windowId: number) {
   await chrome.tabs.update(tabId, { active: true }).catch(() => {});
   await new Promise((r) => setTimeout(r, 2500));
   if (prev?.id != null && prev.id !== tabId) await chrome.tabs.update(prev.id, { active: true }).catch(() => {});
+}
+
+/** Open workspace tabs (no "tabs" permission needed: found through runtime.getContexts, or by URL on Firefox). */
+async function workspaceTabIds(): Promise<number[]> {
+  const ids = chrome.runtime.getContexts
+    ? (await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.TAB], documentUrls: [WORKSPACE_URL] }).catch(() => [])).map((c) => c.tabId)
+    : (await chrome.tabs.query({ url: WORKSPACE_URL }).catch(() => [])).map((t) => t.id ?? -1);
+  return ids.filter((id) => id >= 0);
 }
 
 /**
@@ -237,7 +257,10 @@ async function storedInput(jobId: string): Promise<JobInput> {
   return last.input;
 }
 
-async function workspaceSend(msg: { input?: JobInput; reuseInput?: boolean; skipGuard?: boolean; site: SiteAdapter['id']; newChat?: boolean; jobId: string; displayPrompt?: string; unprotected?: boolean }, windowId?: number): Promise<JobState> {
+/** Tell the workspace what the send is doing right now (shown under the message). */
+const wsStep = (jobId: string, step: string) => chrome.runtime.sendMessage({ type: 'limenn:ws-step', jobId, step }).catch(() => {});
+
+async function workspaceSend(msg: { input?: JobInput; reuseInput?: boolean; skipGuard?: boolean; site: SiteAdapter['id']; newChat?: boolean; jobId: string; displayPrompt?: string; unprotected?: boolean }, windowId?: number, workspaceTabId?: number): Promise<JobState> {
   const input = msg.reuseInput ? await storedInput(msg.jobId) : msg.input!;
   const tabId = await workspaceTab(msg.site, !!msg.newChat, windowId);
   const job: JobState = {
@@ -257,7 +280,16 @@ async function workspaceSend(msg: { input?: JobInput; reuseInput?: boolean; skip
   // Leak guard: never send automatically when something risky is still in the cleaned text.
   if (!msg.skipGuard && !cleaned.unprotected && cleaned.items.some((i) => i.risks?.some((r) => r.severity === 'high'))) return { ...cleaned, status: 'cleaned' };
   const urlBefore = (await chrome.tabs.get(tabId).catch(() => undefined))?.url;
+  // A hidden tab never finishes an upload (and ChatGPT turns long text into an upload too): for a message with documents
+  // or long text, show the chat tab once while it is handed over, then come back. Announced in the workspace.
+  const label = ADAPTERS.find((a) => a.id === msg.site)?.label ?? 'The chat';
+  const big = cleaned.items.some((i) => i.kind === 'file') || cleaned.items.reduce((n, i) => n + (i.clean?.length ?? 0), 0) > 4000;
+  if (big) {
+    wsStep(msg.jobId, `${label} needs its tab in front for a moment to upload the document. limenn switches back by itself…`);
+    await chrome.tabs.update(tabId, { active: true }).catch(() => {});
+  } else wsStep(msg.jobId, `handing the cleaned message to ${label}…`);
   let r = await chrome.tabs.sendMessage(tabId, { type: 'limenn:deliver', job: cleaned }).catch((e: Error) => ({ ok: false, error: e.message }));
+  if (big && workspaceTabId != null) await chrome.tabs.update(workspaceTabId, { active: true }).catch(() => {});
   // Grok reloads the page once a new chat gets its own URL, which closes this message channel mid-delivery. If the
   // tab moved to a new URL the message went out, and the restarted content script keeps following the answer.
   if (!r?.ok && /channel closed|port closed|Receiving end does not exist/i.test(r?.error ?? '')) {
@@ -345,6 +377,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           job.answer = { text: msg.text, raw: msg.raw, done: msg.done };
           chrome.storage.session.set({ [LAST_JOB_KEY]: job });
         }
+        if (msg.done) rememberJob({ ...(job && job.id === msg.jobId ? job : ({ id: msg.jobId } as JobState)), answer: { text: msg.text, raw: msg.raw, done: true } });
       });
       return false;
     }
@@ -384,10 +417,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
 
     case 'limenn:workspace:send':
-      workspaceSend(msg, sender.tab?.windowId).then(
+      workspaceSend(msg, sender.tab?.windowId, sender.tab?.id).then(
         (job) => sendResponse({ ok: true, job }),
         (e: Error) => sendResponse({ ok: false, error: e.message }),
       );
+      return true;
+
+    // "details" on a workspace message: show that message in the side panel (it follows LAST_JOB_KEY).
+    case 'limenn:show-job':
+      chrome.storage.session.get(JOBS_KEY).then(async (s) => {
+        const job = ((s[JOBS_KEY] ?? {}) as Record<string, JobState>)[msg.jobId];
+        if (job?.items) await chrome.storage.session.set({ [LAST_JOB_KEY]: job });
+        sendResponse({ ok: !!job?.items });
+      });
       return true;
 
     case 'limenn:workspace:open':
@@ -427,9 +469,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case 'limenn:answer-status':
       // Some sites hold back rendering in a tab nobody looks at: if the answer has not shown up, bring the chat tab
       // forward for a moment, then go back to where the user was.
+      // Only while the user is looking at the workspace (otherwise a jump would take them away from another site), once.
       if (msg.hidden && sender.tab?.id != null && !woken.has(msg.jobId)) {
-        woken.add(msg.jobId);
-        wakeTab(sender.tab.id, sender.tab.windowId);
+        const { id: tabId, windowId } = sender.tab;
+        Promise.all([chrome.tabs.query({ active: true, windowId }), workspaceTabIds()]).then(([[active], ws]) => {
+          if (active?.id == null || !ws.includes(active.id) || woken.has(msg.jobId)) return;
+          woken.add(msg.jobId);
+          wakeTab(tabId, windowId);
+        }, () => {});
       }
       return false;
 

@@ -23,3 +23,6 @@ limenn-prepared/
 .DS_Store
 .vscode/
 .idea/
+
+# Local test protocol (not exported)
+testing/

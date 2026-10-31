@@ -34,7 +34,8 @@ const KEYWORDS = [
 ];
 const KEYWORD_RE = new RegExp(`(?<![\\p{L}])(?:${KEYWORDS.join('|')})`, 'giu');
 
-export type FinancialPolicy = 'context' | 'all';
+/** 'none': amounts stay in the text (the AI can calculate with them); 'context': only personal amounts; 'all': every amount. */
+export type FinancialPolicy = 'none' | 'context' | 'all';
 
 /** Is a personal-finance keyword within `radius` characters before the amount (same line), or right after it? */
 function inContext(text: string, start: number, end: number, radius = 60): boolean {
@@ -61,6 +62,7 @@ const STATEMENT_RE =
   /(?:Kontoauszug|Konto-?auszug|Vermögensausweis|Steuerveranlagung|Veranlagungsverfügung|Steuerrechnung|Lohnausweis|Lohnabrechnung|relevé de compte|extrait de compte|avis de taxation|décision de taxation|bordereau d'impôt|fiche de salaire|décompte de salaire|estratto conto|notifica di tassazione|decisione di tassazione|busta paga|conteggio salario|account statement|bank statement|tax assessment|notice of assessment|payslip|pay slip)/i;
 
 export function detectFinancial(text: string, policy: FinancialPolicy = 'context'): Entity[] {
+  if (policy === 'none') return [];
   const all = policy === 'all' || STATEMENT_RE.test(text);
   return findAmounts(text)
     .filter((a) => all || inContext(text, a.start, a.end))

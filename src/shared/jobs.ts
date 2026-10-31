@@ -110,6 +110,8 @@ export const MANUAL_KEY = 'limenn.manual';
 /** chrome.storage.local: the user's "always protect" list (ProtectedRule[]); never leaves this browser. */
 export const PROTECTED_KEY = 'limenn.protected';
 export const LAST_JOB_KEY = 'limenn.lastJob';
+/** chrome.storage.session: recent finished jobs by id, so the side panel can show an earlier workspace message. */
+export const JOBS_KEY = 'limenn.jobs';
 export const LAST_INPUT_KEY = 'limenn.lastInput';
 /** chrome.storage.session: the chat tab the workspace uses per site ({ chatgpt: tabId, claude: tabId }). */
 export const WS_TABS_KEY = 'limenn.wsTabs';

@@ -74,7 +74,9 @@ body.off #send { background: var(--red); border-color: var(--red); }
   .ws-main, .ws-composer { padding-inline: 16px; }
 }
 
-/* history drawer */
+/* history drawer: on wide windows it pushes the page (header, thread, composer) aside instead of covering it */
+body { transition: padding-right 0.18s ease; }
+@media (min-width: 900px) { body.history-open { padding-right: min(420px, 100vw); } }
 .history { position: fixed; top: 0; right: 0; bottom: 0; z-index: 20; width: min(420px, 100vw); background: #fff; border-left: 1px solid var(--accent); box-shadow: -24px 0 48px -28px rgba(26, 60, 255, 0.45); padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; overflow: auto; }
 .history-head { display: flex; align-items: center; justify-content: space-between; }
 .history-head h2 { font-size: 28px; letter-spacing: -0.04em; }

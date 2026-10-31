@@ -124,3 +124,15 @@ export function passesLowercaseNameGate(e: Entity, text: string): boolean {
   if (words.length >= 2) return e.score >= 0.95;
   return e.score >= 0.99 && !COMMON_WORD_NAMES.has(words[0]) && passesProperNounGate(e, text);
 }
+
+const STREET_SHAPE = /(?:str\.?|straße|strasse|gasse|weg|platz|allee|damm|ufer)(?:[ \t,.]|$)|(?<![\p{L}\p{N}])(?:OG|EG|UG|DG)(?![\p{L}\p{N}])|(?<![\p{N}])\d{5}(?![\p{N}])/iu;
+
+/**
+ * A model "person" or "organisation" that is shaped like an address ("OG, Marktstr", "Rosenweg 3") is an address:
+ * keep it protected, but under the right label so the AI isn't asked who "[PERSON-1]" is when it's a street.
+ */
+export function retypeByShape(e: Entity): Entity {
+  if (e.source !== 'ner' && e.source !== 'jev') return e;
+  if (e.type !== 'PERSON' && e.type !== 'ORG') return e;
+  return STREET_SHAPE.test(e.text) ? { ...e, type: 'ADDRESS' } : e;
+}

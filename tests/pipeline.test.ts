@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { redact } from '../src/pii/pipeline';
 import { DEFAULT_SETTINGS } from '../src/pii/types';
@@ -17,6 +18,31 @@ describe('redact', () => {
   it('respects the allow list', async () => {
     const r = await redact('Hi Claude, mail a@b.ch', { settings: { ...settings, enableJev: false }, vault: new Vault(), allow: new Set(['a@b.ch']) });
     expect(r.clean).toBe('Hi Claude, mail a@b.ch');
+  });
+});
+
+describe('german letter addresses', () => {
+  const s = { ...DEFAULT_SETTINGS, enableNer: false, enableJev: false };
+  it('keeps a floor + street + town together as one address, not a person', async () => {
+    const r = await redact('Sehr geehrter Herr Huth,\nWohnung 3. OG, Marktstr. 59, 47798 Krefeld', { settings: s, vault: new Vault() });
+    expect(r.clean).toBe('Sehr geehrter Herr [PERSON-1],\nWohnung [ADDRESS-1]');
+    expect(r.entities.find((e) => e.type === 'ADDRESS')?.text).toBe('3. OG, Marktstr. 59, 47798 Krefeld');
+  });
+  it('still reads "SURNAME, Firstname"', async () => {
+    const r = await redact('BOURCARD, Zoey', { settings: s, vault: new Vault() });
+    expect(r.clean).toBe('[PERSON-1]');
+  });
+});
+
+describe('fixture: rent-deposit letter (rules only)', () => {
+  const expected = JSON.parse(readFileSync(new URL('../fixtures/expected.json', import.meta.url), 'utf8'))['rent_letter.txt'];
+  const text = readFileSync(new URL('../fixtures/rent_letter.txt', import.meta.url), 'utf8');
+  it('removes every must-redact value, keeps the amounts, and labels no street as a person', async () => {
+    const r = await redact(text, { settings: { ...DEFAULT_SETTINGS, enableNer: false, enableJev: false }, vault: new Vault() });
+    expect(expected.mustRedact.filter((v: string) => r.clean.includes(v))).toEqual([]);
+    expect(expected.mustKeep.filter((v: string) => !r.clean.includes(v))).toEqual([]);
+    const persons = r.entities.filter((e) => e.type === 'PERSON').map((e) => e.text);
+    expect(persons.filter((p) => expected.mustNotBePerson.some((n: string) => p.includes(n)))).toEqual([]);
   });
 });
 

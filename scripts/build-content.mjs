@@ -7,7 +7,7 @@ import { CACHE, fetchModels } from './fetch-models.mjs';
 import { DIST, TARGET, firefoxManifest, shipped } from './target.mjs';
 
 await build({
-  entryPoints: { content: 'src/content/main.ts', background: 'src/background.ts' },
+  entryPoints: { content: 'src/content/main.ts', 'key-guard': 'src/content/key-guard.ts', background: 'src/background.ts' },
   outdir: DIST,
   bundle: true,
   format: 'iife',
@@ -17,7 +17,7 @@ await build({
   loader: { '.css': 'text' },
 });
 copyFileSync('src/content/content.css', `${DIST}/content.css`);
-console.log('built content.js, background.js');
+console.log('built content.js, key-guard.js, background.js');
 
 // Every model the extension uses is bundled (models/models.lock.json): the extension never downloads anything.
 // fetchModels() downloads missing files into .cache/models and verifies each file's sha256 before it is copied.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ahvValid, detectRegex, ibanValid, luhn } from '../src/pii/regex';
+import { mergeEntities } from '../src/pii/merge';
 
 const types = (t: string) => detectRegex(t).map((e) => [e.type, e.text]);
 
@@ -80,4 +81,17 @@ describe('phone and email formats', () => {
   it.each(['max.mustermann@firma.de', 'Max_Mustermann+test@sub.example.co.uk'])('email %s', (m) =>
     expect(types(`Mail ${m}.`)).toContainEqual(['EMAIL', m]),
   );
+  it('finds case references (Aktenzeichen) as their own type', () => {
+    expect(types('Az. 12 O 345/24')).toContainEqual(['CASE_REF', '12 O 345/24']);
+    expect(types('Aktenzeichen: VN-2026-00412')).toContainEqual(['CASE_REF', 'VN-2026-00412']);
+    expect(types('Unser Zeichen 4711/26-ks')).toContainEqual(['CASE_REF', '4711/26-ks']);
+    expect(types('Case No. 2024/118')).toContainEqual(['CASE_REF', '2024/118']);
+    expect(mergeEntities(detectRegex('Aktenzeichen: VN-2026-00412')).map((e) => e.type)).toEqual(['CASE_REF']);
+  });
+  it('keeps money amounts when the policy is none', () => {
+    expect(detectRegex('Kaution 1.250,00 EUR, Miete CHF 1\'850', { financialPolicy: 'none' }).filter((e) => e.type === 'FINANCIAL')).toEqual([]);
+  });
+  it('does not read a floor and street as "SURNAME, Firstname"', () => {
+    expect(types('Wohnung 3. OG, Marktstr. 59').filter(([t]) => t === 'PERSON')).toEqual([]);
+  });
 });

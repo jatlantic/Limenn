@@ -14,5 +14,14 @@
       "Sabine Odermatt", "Witellikerstrasse 40", "8008 Zürich", "s.odermatt@hirslanden-example.ch", "4402819", "03.02.2026"
     ],
     "mustKeep": ["Kündigungsfrist", "Krankentaggeldversicherung", "730 Tagen", "Art. 336c OR"]
+  },
+  "rent_letter.txt": {
+    "mustRedact": [
+      "Albrecht & Partner Hausverwaltung GmbH", "Schillerstraße 21", "030 4471 2290", "verwaltung@albrecht-partner-hv.de",
+      "Jonas", "Albrecht-Werner", "Lindenallee 7", "50968 Köln", "28.07.2026", "MK-2026-0419", "12 C 345/26",
+      "Marktstr. 59", "47798 Krefeld", "31.03.2026", "DE89 3704 0044 0532 0130 00", "Sabine Krüger"
+    ],
+    "mustKeep": ["Mietkaution", "2.400,00 EUR", "1.466,25 EUR", "Renovierung Küche", "Nebenkostennachzahlung"],
+    "mustNotBePerson": ["OG, Marktstr", "Marktstr"]
   }
 }

@@ -48,6 +48,18 @@
         "https://grok.com/*"
       ],
       "js": [
+        "key-guard.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://claude.ai/*",
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://grok.com/*"
+      ],
+      "js": [
         "content.js"
       ],
       "css": [

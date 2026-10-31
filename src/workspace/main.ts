@@ -5,8 +5,9 @@
 import type { SiteAdapter } from '../content/adapters';
 import { DOCVAULT_KEY, type DocVaultState, emptyDocVault, HISTORY_KEY, type HistoryEntry, type JobFile, type JobState } from '../shared/jobs';
 import { logoSvg } from '../shared/logo';
-import { ENABLED_KEY } from '../shared/messages';
-import { addProtected, loadVault } from '../shared/storage';
+import { ENABLED_KEY, SETTINGS_KEY } from '../shared/messages';
+import { addProtected, loadSettings, loadVault } from '../shared/storage';
+import type { Settings } from '../pii/types';
 import { PLACEHOLDER_RE, placeholderId } from '../pii/vault';
 import { SUPPORTED_EXT } from '../docvault/types';
 import { customEntities, guessType, makeRule } from '../pii/custom';
@@ -130,14 +131,14 @@ async function render() {
     thread.turns.map(async (t) => {
       const status =
         t.status === 'error'
-          ? `<div class="status error"><span class="dot"></span>${esc(t.error ?? 'Something went wrong')}</div>`
+          ? `<div class="status error"><span class="dot"></span>${esc(t.error ?? 'Something went wrong')}${t.clean != null ? ` <button data-details="${t.id}" title="Open the side panel for this message">details</button>` : ''}</div>`
           : t.status === 'running'
             ? `<div class="status"><span class="dot"></span>${esc(t.step ?? 'cleaning on this device…')}</div>`
             : t.status === 'cleaned'
               ? `<div class="status error"><span class="dot"></span>held back: ${reviewCount(t)} thing${reviewCount(t) === 1 ? '' : 's'} in the cleaned text still look${reviewCount(t) === 1 ? 's' : ''} personal. Nothing was sent.</div>${reviewHtml(t)}`
               : t.unprotected
                 ? `<div class="status unprotected"><span class="dot"></span>protection off · sent to ${LABEL[t.site]} unchanged</div>`
-                : `<div class="status done"><span class="dot"></span>${t.protectedCount ?? 0} values protected · sent to ${LABEL[t.site]} <button data-show-clean="${t.id}" title="Show exactly what was sent, with placeholders">what ${LABEL[t.site]} saw</button></div>`;
+                : `<div class="status done"><span class="dot"></span>${t.protectedCount ?? 0} values protected · sent to ${LABEL[t.site]} <button data-show-clean="${t.id}" title="Show exactly what was sent, with placeholders">what ${LABEL[t.site]} saw</button> <button data-details="${t.id}" title="Open the side panel for this message: what was found, per document">details</button></div>`;
       const ai =
         t.answer || t.raw
           ? `<div class="msg ai"><div class="who"><b>${LABEL[t.site]}</b>${t.done ? '' : '· writing…'}</div><div class="text">${await answerHtml(t)}</div>${t.done ? `<div class="ai-actions"><button class="btn sm primary" data-copy="${t.id}" title="Copy the answer with your real data filled in">copy with your real data</button><button class="btn sm ghost" data-copy-raw="${t.id}" title="Copy the answer as the AI wrote it, with placeholders">copy as ${LABEL[t.site]} wrote it</button></div>` : ''}</div>`
@@ -307,6 +308,24 @@ chrome.runtime.onMessage.addListener((msg) => {
     turn.step = running[0] ? `cleaning on this device: ${running[0]}` : 'cleaning on this device…';
     render();
   }
+  if (msg.type === 'limenn:ws-step' && turn.status === 'running') {
+    turn.step = msg.step;
+    render();
+    return false;
+  }
+  // Delivery failed, then the user sent the cleaned message by hand in the chat tab: it went out after all.
+  if ((msg.type === 'limenn:status' && msg.status === 'sent') || (msg.type === 'limenn:answer' && turn.status === 'error')) {
+    if (turn.status === 'error') {
+      turn.status = 'sent';
+      turn.error = undefined;
+      thread.seenBy[turn.site] = thread.turns.map((t) => t.id);
+      save();
+    }
+    if (msg.type === 'limenn:status') {
+      render();
+      return false;
+    }
+  }
   if (msg.type === 'limenn:answer-status') {
     if (!turn.answer) {
       turn.diag = { why: msg.why, messages: msg.messages, hidden: msg.hidden, at: Date.now() };
@@ -386,6 +405,8 @@ async function renderHistory() {
 
 function setHistoryOpen(open: boolean) {
   $('history').hidden = !open;
+  // Wide windows: the drawer pushes the page aside instead of covering the header.
+  document.body.classList.toggle('history-open', open);
   $('history-btn').setAttribute('aria-expanded', String(open));
   if (open) renderHistory();
 }
@@ -472,8 +493,23 @@ async function restoredText(turn: Turn): Promise<string> {
   return turn.raw.replace(new RegExp(PLACEHOLDER_RE.source, 'g'), (m, id) => vault.lookup(placeholderId(id))?.value ?? m);
 }
 
+// ---------- details: the side panel, showing one message ----------
+
+const sidebar = () => (globalThis as unknown as { browser?: { sidebarAction?: { open(): Promise<void> } } }).browser?.sidebarAction;
+let windowId: number | undefined;
+chrome.windows?.getCurrent().then((w) => (windowId = w.id), () => {});
+/** Opens the panel right in the click (browsers only allow that from a user action), then points it at the message. */
+function openDetails(jobId?: string) {
+  if (chrome.sidePanel && windowId != null) chrome.sidePanel.open({ windowId }).catch(console.error);
+  else sidebar()?.open().catch(console.error);
+  const id = jobId ?? [...thread.turns].reverse().find((t) => t.clean != null)?.id;
+  if (id) chrome.runtime.sendMessage({ type: 'limenn:show-job', jobId: id }).catch(() => {});
+}
+$('details-btn').addEventListener('click', () => openDetails());
+
 $('thread').addEventListener('click', async (e) => {
   const el = e.target as HTMLElement;
+  if (el.dataset.details) return openDetails(el.dataset.details);
   if (el.dataset.showChat) return void chrome.runtime.sendMessage({ type: 'limenn:workspace:show-chat', site: el.dataset.showChat });
   const copyId = el.dataset.copy ?? el.dataset.copyRaw;
   if (copyId) {
@@ -527,3 +563,11 @@ chrome.storage.session.get([THREAD_KEY, ARCHIVE_KEY]).then((r) => {
   render();
 });
 $('prompt').focus();
+
+// The document vault is a beta feature: its button shows only when switched on in Settings.
+const showVaultButton = (on: boolean) => {
+  $('vault').hidden = !on;
+  if (!on) $('vault-pick').hidden = true;
+};
+loadSettings().then((s) => showVaultButton(s.docVault));
+chrome.storage.local.onChanged.addListener((c) => c[SETTINGS_KEY] && showVaultButton(!!(c[SETTINGS_KEY].newValue as Settings | undefined)?.docVault));

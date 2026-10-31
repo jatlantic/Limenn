@@ -52,12 +52,27 @@ function setTextareaValue(el: HTMLTextAreaElement, value: string) {
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-function clearComposer(el: HTMLElement) {
+/**
+ * Empty the composer, and make sure it really is empty: execCommand does nothing in an editor that has no focus (a
+ * background tab), and text added on top of a leftover draft went out twice (the note before and after the prompt).
+ */
+async function clearComposer(el: HTMLElement) {
   el.focus();
   if (!composerText(el).trim()) return;
   if (el instanceof HTMLTextAreaElement) return setTextareaValue(el, '');
   document.execCommand('selectAll');
   document.execCommand('delete');
+  if (!composerText(el).trim()) return;
+  // Select the editor's contents ourselves and ask the editor to delete them, the way a keypress would.
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+  el.dispatchEvent(new InputEvent('beforeinput', { inputType: 'deleteContentBackward', bubbles: true, cancelable: true }));
+  document.execCommand('delete');
+  await wait(100);
+  if (composerText(el).trim()) throw new Error(`Could not empty the ${site.label} message box. Please clear it once by hand and send again.`);
 }
 
 function insertText(el: HTMLElement, text: string) {
@@ -107,17 +122,10 @@ async function attachFiles(files: File[]) {
 }
 
 async function pressSend(timeout = 60000) {
-  const t0 = Date.now();
-  let asked = false;
+  // An upload only finishes while the tab is shown; the workspace brings this tab forward before a send with documents.
   const btn = await waitFor(() => {
     const b = q<HTMLButtonElement>(SELECTORS.sendButton);
-    if (b && !b.disabled && b.getAttribute('aria-disabled') !== 'true') return b;
-    // An upload only finishes while the tab is shown: ask the background to bring it forward for a moment.
-    if (!asked && document.hidden && Date.now() - t0 > 12000) {
-      asked = true;
-      chrome.runtime.sendMessage({ type: 'limenn:wake' }).catch(() => {});
-    }
-    return null;
+    return b && !b.disabled && b.getAttribute('aria-disabled') !== 'true' ? b : null;
   }, timeout).catch(() => {
     throw Object.assign(new Error('The send button stayed disabled (the upload may not have finished).'), { name: 'SendUnavailable' });
   });
@@ -222,10 +230,32 @@ function resumePendingAnswer() {
   } catch {}
 }
 
+/**
+ * Delivery failed, but the cleaned message is still in the composer: when the user sends it by hand in this tab,
+ * report it as sent and follow the answer, so it still shows up in the workspace.
+ */
+let stopManualWatch = () => {};
+function watchManualSend(jobId: string) {
+  stopManualWatch();
+  const users = () => document.querySelectorAll(SELECTORS.userMessage).length;
+  const before = users();
+  const answersBefore = qAll(SELECTORS.assistantMessage).length;
+  const t0 = Date.now();
+  const timer = window.setInterval(() => {
+    if (Date.now() - t0 > WATCH_MS) return stopManualWatch();
+    if (users() <= before) return;
+    stopManualWatch();
+    chrome.runtime.sendMessage({ type: 'limenn:status', jobId, status: 'sent' }).catch(() => {});
+    watchAnswer(jobId, { before: answersBefore, t0: Date.now() });
+  }, 1000);
+  stopManualWatch = () => clearInterval(timer);
+}
+
 async function deliver(job: JobState, send: boolean) {
+  stopManualWatch();
   const { text, files } = composeMessage(job);
   const composer = await waitFor(() => q<HTMLElement>(SELECTORS.composer), 8000);
-  clearComposer(composer);
+  await clearComposer(composer);
   await clearAttachments();
   let message = text;
   let attached = false;
@@ -242,14 +272,21 @@ async function deliver(job: JobState, send: boolean) {
     // Count answers before sending: some sites (Grok) show the new answer's bubble right away.
     const before = qAll(SELECTORS.assistantMessage).length;
     try {
-      await pressSend(attached ? 30000 : 60000);
+      try {
+        await pressSend(attached ? 20000 : 30000);
+      } catch (e) {
+        // The upload never completed: send the cleaned documents inside the message instead of giving up.
+        if (!attached || (e as Error).name !== 'SendUnavailable') throw e;
+        await clearAttachments();
+        if (document.querySelector(SELECTORS.attachmentThumb)) throw e;
+        await clearComposer(composer);
+        insertText(composer, composeMessage(job, { inline: true }).text);
+        await pressSend(30000);
+      }
     } catch (e) {
-      // The upload never completed: send the cleaned documents inside the message instead of giving up.
-      if (!attached || (e as Error).name !== 'SendUnavailable') throw e;
-      await clearAttachments();
-      clearComposer(composer);
-      insertText(composer, composeMessage(job, { inline: true }).text);
-      await pressSend(60000);
+      // The cleaned message stays in the box: if the user sends it by hand, the answer still reaches the workspace.
+      watchManualSend(job.id);
+      throw e;
     }
     watchAnswer(job.id, { before, t0: Date.now() });
   }
